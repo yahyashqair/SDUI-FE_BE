@@ -1,0 +1,21 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { LiveEditor } from '../../components/react/LiveEditor';
+import '../../sdui/components'; // Ensure components are registered
+
+---
+
+<Layout title="Live SDUI Editor">
+  <main>
+    <LiveEditor initialEndpoint="/api/sdui/dashboard" client:only="react" />
+  </main>
+</Layout>
+
+<style>
+  html, body, main {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Let the editor handle scrolling */
+  }
+</style>

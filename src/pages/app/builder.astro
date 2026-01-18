@@ -1,0 +1,451 @@
+---
+/**
+ * AI Component Builder with Live Preview
+ */
+export const prerender = false;
+
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="AI Component Builder">
+    <main id="app"></main>
+    <script>
+        import React, { useState, useRef, useEffect } from 'react';
+        import { createRoot } from 'react-dom/client';
+
+        // Expose React globally for MFE compatibility
+        (window as any).React = React;
+
+        const h = React.createElement;
+
+        // Live Preview Component - evaluates and renders generated code
+        function LivePreview({ code }: { code: string }) {
+            const [Component, setComponent] = useState<React.FC<any> | null>(null);
+            const [error, setError] = useState<string | null>(null);
+
+            useEffect(() => {
+                if (!code || code.trim().length < 50) {
+                    setComponent(null);
+                    setError(null);
+                    return;
+                }
+
+                try {
+                    // Create a blob URL from the code
+                    const blob = new Blob([code], { type: 'text/javascript' });
+                    const url = URL.createObjectURL(blob);
+
+                    // Dynamically import the module
+                    import(/* @vite-ignore */ url)
+                        .then((module) => {
+                            if (module.default && typeof module.default === 'function') {
+                                setComponent(() => module.default);
+                                setError(null);
+                            } else {
+                                setError('No default export found');
+                            }
+                        })
+                        .catch((e) => {
+                            setError(e.message);
+                        })
+                        .finally(() => {
+                            URL.revokeObjectURL(url);
+                        });
+                } catch (e) {
+                    setError(e instanceof Error ? e.message : 'Unknown error');
+                }
+            }, [code]);
+
+            // Mock context for preview
+            const mockContext = {
+                variables: { preview: true },
+                globalState: {},
+                setGlobalState: () => {},
+                navigate: (path: string) => alert(`Navigate to: ${path}`),
+                callAPI: async (url: string) => ({ mock: true, url })
+            };
+
+            if (error) {
+                return h('div', { 
+                    style: { 
+                        padding: '1rem', 
+                        background: '#fef2f2', 
+                        border: '1px solid #fecaca',
+                        borderRadius: '8px',
+                        color: '#dc2626',
+                        fontSize: '0.875rem'
+                    } 
+                },
+                    h('strong', null, 'Preview Error: '),
+                    error
+                );
+            }
+
+            if (!Component) {
+                return h('div', { 
+                    style: { 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        height: '100%',
+                        color: '#9ca3af',
+                        fontSize: '0.875rem'
+                    } 
+                }, 'Preview will appear here...');
+            }
+
+            return h('div', { style: { height: '100%', overflow: 'auto' } },
+                h(Component, { context: mockContext })
+            );
+        }
+
+        function AgentChat() {
+            const [prompt, setPrompt] = useState('');
+            const [messages, setMessages] = useState<Array<{role: string, content: string}>>([]);
+            const [generatedCode, setGeneratedCode] = useState('');
+            const [isGenerating, setIsGenerating] = useState(false);
+            const [deployRoute, setDeployRoute] = useState('/my-component');
+            const [deployName, setDeployName] = useState('my-component');
+            const [deployStatus, setDeployStatus] = useState<{type: 'success'|'error', message: string} | null>(null);
+            const [activeTab, setActiveTab] = useState<'code' | 'preview'>('preview');
+
+            const handleGenerate = async () => {
+                if (!prompt.trim() || isGenerating) return;
+                
+                setIsGenerating(true);
+                setGeneratedCode('');
+                setMessages(prev => [...prev, { role: 'user', content: prompt }]);
+                
+                try {
+                    const response = await fetch('/api/agent/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(await response.text());
+                    }
+
+                    const reader = response.body?.getReader();
+                    if (!reader) throw new Error('No response body');
+
+                    const decoder = new TextDecoder();
+                    let code = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        
+                        const chunk = decoder.decode(value);
+                        code += chunk;
+                        setGeneratedCode(code);
+                    }
+
+                    setMessages(prev => [...prev, { role: 'assistant', content: 'Component generated! Check the preview.' }]);
+                    setPrompt('');
+                    
+                } catch (e) {
+                    setMessages(prev => [...prev, { 
+                        role: 'assistant', 
+                        content: `Error: ${e instanceof Error ? e.message : 'Unknown error'}` 
+                    }]);
+                } finally {
+                    setIsGenerating(false);
+                }
+            };
+
+            const handleDeploy = async () => {
+                if (!generatedCode) return;
+                
+                setDeployStatus(null);
+                
+                try {
+                    const response = await fetch('/api/agent/deploy', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            code: generatedCode,
+                            route: deployRoute,
+                            name: deployName
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        setDeployStatus({ 
+                            type: 'success', 
+                            message: `Deployed! Preview at: ${data.previewUrl}` 
+                        });
+                    } else {
+                        setDeployStatus({ type: 'error', message: data.error });
+                    }
+                } catch (e) {
+                    setDeployStatus({ 
+                        type: 'error', 
+                        message: e instanceof Error ? e.message : 'Deploy failed' 
+                    });
+                }
+            };
+
+            return h('div', { 
+                style: { 
+                    display: 'grid', 
+                    gridTemplateColumns: '350px 1fr', 
+                    height: '100vh',
+                    fontFamily: 'system-ui, sans-serif'
+                } 
+            },
+                // Left Panel: Chat
+                h('div', { 
+                    style: { 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        borderRight: '1px solid #e5e7eb',
+                        background: '#f9fafb'
+                    } 
+                },
+                    // Header
+                    h('div', { 
+                        style: { 
+                            padding: '1rem', 
+                            borderBottom: '1px solid #e5e7eb',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            color: 'white'
+                        } 
+                    },
+                        h('h1', { style: { margin: 0, fontSize: '1.25rem', fontWeight: '600' } }, '🤖 AI Component Builder'),
+                        h('p', { style: { margin: '0.5rem 0 0', fontSize: '0.75rem', opacity: 0.9 } }, 
+                            'Describe a component and see it live')
+                    ),
+                    
+                    // Messages
+                    h('div', { 
+                        style: { 
+                            flex: 1, 
+                            overflow: 'auto', 
+                            padding: '1rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.75rem'
+                        } 
+                    },
+                        messages.map((msg, i) => 
+                            h('div', { 
+                                key: i,
+                                style: { 
+                                    padding: '0.75rem 1rem',
+                                    borderRadius: '12px',
+                                    background: msg.role === 'user' ? '#4f46e5' : 'white',
+                                    color: msg.role === 'user' ? 'white' : '#1f2937',
+                                    alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                                    maxWidth: '85%',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                    fontSize: '0.875rem'
+                                } 
+                            }, msg.content)
+                        ),
+                        isGenerating && h('div', { 
+                            style: { 
+                                padding: '0.75rem 1rem',
+                                borderRadius: '12px',
+                                background: 'white',
+                                alignSelf: 'flex-start',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                            } 
+                        }, '⏳ Generating...')
+                    ),
+                    
+                    // Input
+                    h('div', { 
+                        style: { 
+                            padding: '1rem', 
+                            borderTop: '1px solid #e5e7eb',
+                            display: 'flex',
+                            gap: '0.5rem'
+                        } 
+                    },
+                        h('input', {
+                            type: 'text',
+                            value: prompt,
+                            onChange: (e: any) => setPrompt(e.target.value),
+                            onKeyDown: (e: any) => e.key === 'Enter' && handleGenerate(),
+                            placeholder: 'Describe a component...',
+                            disabled: isGenerating,
+                            style: {
+                                flex: 1,
+                                padding: '0.75rem',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '8px',
+                                fontSize: '0.875rem'
+                            }
+                        }),
+                        h('button', {
+                            onClick: handleGenerate,
+                            disabled: isGenerating || !prompt.trim(),
+                            style: {
+                                padding: '0.75rem 1rem',
+                                background: isGenerating ? '#9ca3af' : '#4f46e5',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: isGenerating ? 'not-allowed' : 'pointer',
+                                fontWeight: '500'
+                            }
+                        }, '▶')
+                    )
+                ),
+
+                // Right Panel: Preview + Code
+                h('div', { 
+                    style: { 
+                        display: 'flex', 
+                        flexDirection: 'column',
+                        background: '#fff'
+                    } 
+                },
+                    // Tabs + Deploy
+                    h('div', { 
+                        style: { 
+                            padding: '0.75rem 1rem', 
+                            borderBottom: '1px solid #e5e7eb',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            background: '#f9fafb'
+                        } 
+                    },
+                        // Tabs
+                        h('div', { style: { display: 'flex', gap: '0.5rem' } },
+                            h('button', {
+                                onClick: () => setActiveTab('preview'),
+                                style: {
+                                    padding: '0.5rem 1rem',
+                                    background: activeTab === 'preview' ? '#4f46e5' : '#e5e7eb',
+                                    color: activeTab === 'preview' ? 'white' : '#374151',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontWeight: '500',
+                                    fontSize: '0.875rem'
+                                }
+                            }, '👁 Preview'),
+                            h('button', {
+                                onClick: () => setActiveTab('code'),
+                                style: {
+                                    padding: '0.5rem 1rem',
+                                    background: activeTab === 'code' ? '#4f46e5' : '#e5e7eb',
+                                    color: activeTab === 'code' ? 'white' : '#374151',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontWeight: '500',
+                                    fontSize: '0.875rem'
+                                }
+                            }, '</> Code')
+                        ),
+                        // Deploy controls
+                        h('div', { style: { display: 'flex', gap: '0.5rem', alignItems: 'center' } },
+                            h('input', {
+                                type: 'text',
+                                value: deployName,
+                                onChange: (e: any) => setDeployName(e.target.value),
+                                placeholder: 'name',
+                                style: {
+                                    padding: '0.5rem',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '4px',
+                                    fontSize: '0.75rem',
+                                    width: '100px'
+                                }
+                            }),
+                            h('input', {
+                                type: 'text',
+                                value: deployRoute,
+                                onChange: (e: any) => setDeployRoute(e.target.value),
+                                placeholder: '/route',
+                                style: {
+                                    padding: '0.5rem',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '4px',
+                                    fontSize: '0.75rem',
+                                    width: '100px'
+                                }
+                            }),
+                            h('button', {
+                                onClick: handleDeploy,
+                                disabled: !generatedCode,
+                                style: {
+                                    padding: '0.5rem 1rem',
+                                    background: generatedCode ? '#10b981' : '#9ca3af',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: generatedCode ? 'pointer' : 'not-allowed',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '500'
+                                }
+                            }, '🚀 Deploy')
+                        )
+                    ),
+                    
+                    // Deploy Status
+                    deployStatus && h('div', { 
+                        style: { 
+                            padding: '0.75rem 1rem',
+                            background: deployStatus.type === 'success' ? '#d1fae5' : '#fee2e2',
+                            color: deployStatus.type === 'success' ? '#065f46' : '#991b1b',
+                            fontSize: '0.875rem'
+                        } 
+                    }, deployStatus.message),
+                    
+                    // Content Area
+                    h('div', { style: { flex: 1, overflow: 'hidden' } },
+                        activeTab === 'preview' ? (
+                            h('div', { 
+                                style: { 
+                                    height: '100%', 
+                                    padding: '1rem',
+                                    overflow: 'auto',
+                                    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)'
+                                } 
+                            },
+                                h(LivePreview, { code: generatedCode })
+                            )
+                        ) : (
+                            h('pre', {
+                                style: {
+                                    height: '100%',
+                                    margin: 0,
+                                    padding: '1rem',
+                                    overflow: 'auto',
+                                    background: '#1e1e1e',
+                                    color: '#d4d4d4',
+                                    fontSize: '0.75rem',
+                                    lineHeight: 1.6,
+                                    fontFamily: 'Monaco, Consolas, monospace'
+                                }
+                            }, generatedCode || '// Your generated component will appear here...')
+                        )
+                    )
+                )
+            );
+        }
+
+        // Mount the app
+        const root = createRoot(document.getElementById('app')!);
+        root.render(h(AgentChat, null));
+    </script>
+</Layout>
+
+<style>
+    main {
+        height: 100vh;
+        overflow: hidden;
+    }
+    body {
+        margin: 0;
+        padding: 0;
+    }
+</style>

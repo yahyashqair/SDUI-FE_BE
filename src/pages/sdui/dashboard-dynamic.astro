@@ -1,0 +1,29 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { DynamicSDUIRenderer } from '../../sdui/DynamicRenderer';
+import '../../sdui/components'; 
+
+---
+
+<Layout title="Executive Dashboard - SDUI Demo">
+  <main class="dashboard-page">
+    <div class="dashboard-container">
+        <!-- Fetch dashboard from API -->
+        <DynamicSDUIRenderer endpoint="/api/sdui/dashboard" client:load />
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .dashboard-page {
+    min-height: 100vh;
+    background: #f3f4f6;
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 2rem;
+  }
+
+  .dashboard-container {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+</style>
