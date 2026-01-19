@@ -3,11 +3,12 @@
         "about-us": {
             "source": "/mfe/about-us/index.js",
             "integrity": "sha384-Qcwbprsr7dpPvg1eyR03A29f3FbWOCCvxKFoe2eS+LxwCx6nKJ2iY7eP6MAAnugf",
-            "version": "1.0.0",
+            "version": "1.0.1",
             "variables": {
                 "title": "about-us"
             },
-            "description": "Micro-Frontend about-us"
+            "description": "Micro-Frontend about-us",
+            "updatedAt": "2026-01-19T20:04:03.761Z"
         },
         "dashboard": {
             "source": "/mfe/dashboard/index.js",
@@ -73,5 +74,5 @@
             "description": "Micro-Frontend my-component"
         }
     },
-    "generatedAt": "2026-01-18T20:33:11.380Z"
+    "generatedAt": "2026-01-19T20:04:03.761Z"
 }

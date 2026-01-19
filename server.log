@@ -1,0 +1,410 @@
+
+> second-series@0.0.1 dev
+> astro dev
+
+22:01:32 [@astrojs/node] Enabling sessions with filesystem storage
+22:01:32 [types] Generated 0ms
+22:01:32 [content] Syncing content
+22:01:32 [content] Synced content
+
+ astro  v5.16.11 ready in 485 ms
+
+┃ Local    http://localhost:4321/
+┃ Network  use --host to expose
+
+22:01:32 watching for file changes...
+22:01:41 [200] /api/master 6ms
+22:02:03 [ERROR] Could not import `../../layouts/Layout.astro`.
+  Hint:
+    This is often caused by a typo in the import path. Please make sure the file exists.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/failed-to-load-module-ssr/
+  Stack trace:
+    at /mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/master.astro:2:20
+    [...] See full stack trace in the browser, or rerun with --verbose.
+22:02:21 [ERROR] Could not import `../../layouts/Layout.astro`.
+  Hint:
+    This is often caused by a typo in the import path. Please make sure the file exists.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/failed-to-load-module-ssr/
+  Stack trace:
+    at loadAndTransform (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:35729:17)
+    [...] See full stack trace in the browser, or rerun with --verbose.
+22:02:32 [200] / 349ms
+22:02:38 [200] /api/master 2ms
+22:02:44 [ERROR] Could not import `../../layouts/Layout.astro`.
+  Hint:
+    This is often caused by a typo in the import path. Please make sure the file exists.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/failed-to-load-module-ssr/
+  Stack trace:
+    at loadAndTransform (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:35729:17)
+    [...] See full stack trace in the browser, or rerun with --verbose.
+22:02:44 [ERROR] Could not import `../../layouts/Layout.astro`.
+  Hint:
+    This is often caused by a typo in the import path. Please make sure the file exists.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/failed-to-load-module-ssr/
+  Stack trace:
+    at loadAndTransform (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:35729:17)
+    [...] See full stack trace in the browser, or rerun with --verbose.
+22:02:44 [200] / 85ms
+22:02:44 [ERROR] Could not import `../../layouts/Layout.astro`.
+  Hint:
+    This is often caused by a typo in the import path. Please make sure the file exists.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/failed-to-load-module-ssr/
+  Stack trace:
+    at loadAndTransform (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:35729:17)
+    [...] See full stack trace in the browser, or rerun with --verbose.
+22:02:44 [200] / 40ms
+22:03:03 [watch] src/pages/master.astro
+22:03:03 [watch] src/pages/master.astro
+22:03:03 [200] / 44ms
+22:03:03 [200] /master 19ms
+22:03:03 [200] /master 8ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:23:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:27:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:03:03 [500] /api/master 27ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:23:11)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:27:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:03:03 [500] /api/master 23ms
+22:03:11 [200] /master 10ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:23:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:27:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:03:12 [500] /api/master 32ms
+22:04:03 [watch] public/mfe/mfe-registry.json
+22:04:03 [watch] public/mfe/mfe-registry.json
+22:04:03 [200] POST /api/master 6ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:23:11)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:27:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:04:03 [500] /api/master 24ms
+22:04:03 [200] /master 44ms
+22:04:03 [200] / 47ms
+22:04:03 [200] /master 5ms
+22:04:03 [200] /master 7ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:23:11)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:27:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:04:04 [500] /api/master 26ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:23:11)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:27:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:04:04 [500] /api/master 22ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:23:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:27:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:04:04 [500] /api/master 24ms
+22:04:25 [404] /mfe/about-us/index 1ms
+22:04:28 [404] /mfe/about-us 1ms
+22:06:09 [watch] src/master-app/api/master-api.js
+22:06:09 [watch] src/master-app/api/master-api.js
+22:06:09 [200] /master 59ms
+22:06:09 [200] / 61ms
+22:06:09 [200] /master 6ms
+22:06:10 [200] /master 5ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:23:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:27:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:06:10 [500] /api/master 36ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:23:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:27:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:06:10 [500] /api/master 42ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:23:11)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:27:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:06:10 [500] /api/master 24ms
+22:06:47 [watch] src/pages/api/master.ts
+22:06:47 [watch] src/pages/api/master.ts
+22:06:47 [200] /master 37ms
+22:06:47 [200] / 37ms
+22:06:47 [200] /master 7ms
+22:06:47 [200] /master 6ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:23:11)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:27:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:06:47 [500] /api/master 33ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:23:11)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:27:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:06:47 [500] /api/master 24ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:23:11)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:27:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:06:47 [500] /api/master 21ms
+22:07:09 [watch] src/master-app/lib/fission-client.ts
+22:07:09 [watch] src/master-app/lib/fission-client.ts
+22:07:09 [200] /master 69ms
+22:07:09 [200] / 73ms
+22:07:09 [200] /master 5ms
+22:07:09 [200] /master 8ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:24:11)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:28:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:07:09 [500] /api/master 39ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:24:11)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:28:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:07:09 [500] /api/master 40ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:24:11)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:28:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:07:09 [500] /api/master 24ms
+22:08:13 [watch] /src/master-app/components/MasterDashboard.tsx, /src/styles/global.css
+22:08:13 [watch] src/master-app/components/MasterDashboard.tsx
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:24:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:28:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:08:13 [500] /api/master 29ms
+22:08:13 [200] /api/master 42ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:24:11)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:28:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:08:13 [500] /api/master 31ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:24:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:28:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:08:13 [500] /api/master 22ms
+22:08:13 [200] /api/master 39ms
+22:08:13 [200] /api/master 26ms
+22:08:32 [200] /master 60ms
+Master API Error: Error: Fission CLI error: Error: unknown shorthand flag: 'o' in -o
+See 'fission function list --help' for usage
+
+    at fissionExec (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:24:11)
+    at async Object.listFunctions (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/master-app/lib/fission-client.ts:28:18)
+    at async Module.ALL (/mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/src/pages/api/master.ts:76:29)
+    at async renderEndpoint (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/runtime/server/endpoint.js:37:18)
+    at async lastNext (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:202:23)
+    at async callMiddleware (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)
+    at async RenderContext.render (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/core/render-context.js:249:22)
+    at async handleRoute (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/route.js:180:16)
+    at async run (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:56:14)
+    at async runWithErrorHandling (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/controller.js:64:5)
+    at async handleRequest (file:///mnt/popos/home/yahyashqair/anonDev/astro-first/second-series/node_modules/astro/dist/vite-plugin-astro-server/request.js:50:3)
+22:08:32 [500] /api/master 29ms
+22:08:32 [200] /api/master 31ms
+22:10:36 [404] //api/hello 1ms
+22:10:40 [404] /api/hello 1ms
+22:10:41 [404] /api/hello 1ms
