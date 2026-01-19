@@ -1,0 +1,139 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { PlatformDB } from '../../../db/platform';
+import { generateApp } from '../../../lib/ai/agent';
+import { initTenantDB } from '../../../db/tenant';
+
+const { projectId } = Astro.params;
+const project = PlatformDB.getProject(projectId as string);
+const blueprint = PlatformDB.getActiveBlueprint(projectId as string);
+const functions = PlatformDB.getFunctions(projectId as string);
+
+if (!project) return Astro.redirect('/builder');
+
+// Handle Actions
+if (Astro.request.method === 'POST') {
+  const formData = await Astro.request.formData();
+  const action = formData.get('action');
+
+  if (action === 'generate') {
+    const prompt = formData.get('prompt') as string;
+    const generated = await generateApp(prompt);
+
+    // Save generated artifacts
+    PlatformDB.saveBlueprint(project.id, generated.uiSchema, generated.dataSchema);
+
+    // Init DB
+    initTenantDB(project.id, generated.dataSchema);
+
+    // Save functions
+    for (const fn of generated.functions) {
+      PlatformDB.saveFunction(project.id, fn.name, fn.code);
+    }
+  } else if (action === 'save_ui') {
+      const uiJson = formData.get('ui_schema') as string;
+      const currentBp = PlatformDB.getActiveBlueprint(project.id);
+      const dataSchema = currentBp ? JSON.parse(currentBp.data_schema) : { tables: [] };
+      try {
+          const parsedUI = JSON.parse(uiJson);
+          PlatformDB.saveBlueprint(project.id, parsedUI, dataSchema);
+      } catch(e) {
+          // console.error(e);
+      }
+  } else if (action === 'save_function') {
+      const name = formData.get('name') as string;
+      const code = formData.get('code') as string;
+      PlatformDB.saveFunction(project.id, name, code);
+  }
+
+  return Astro.redirect(`/builder/${projectId}`);
+}
+
+const uiSchemaStr = blueprint ? JSON.stringify(JSON.parse(blueprint.ui_schema), null, 2) : '{}';
+---
+
+<Layout title={`Builder - ${project.name}`}>
+  <div class="flex h-screen bg-gray-100">
+    <!-- Sidebar -->
+    <div class="w-64 bg-gray-900 text-white flex flex-col">
+      <div class="p-4 border-b border-gray-700">
+        <h1 class="font-bold text-xl">{project.name}</h1>
+        <a href="/builder" class="text-xs text-gray-400 hover:text-white">← Back to Dashboard</a>
+      </div>
+
+      <div class="p-4 flex-1 overflow-y-auto">
+        <h2 class="text-xs font-semibold uppercase text-gray-500 mb-2">Functions</h2>
+        <ul class="space-y-1">
+          {functions.map(fn => (
+            <li class="text-sm p-2 hover:bg-gray-800 rounded cursor-pointer">
+              {fn.name}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div class="p-4 border-t border-gray-700">
+          <a href={`/app/${project.id}/`} target="_blank" class="block w-full text-center bg-green-600 hover:bg-green-700 p-2 rounded text-sm font-bold">
+            Open App ↗
+          </a>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <!-- AI Bar -->
+      <div class="bg-white p-4 border-b shadow-sm">
+        <form method="POST" class="flex gap-2">
+          <input type="hidden" name="action" value="generate" />
+          <input
+            type="text"
+            name="prompt"
+            placeholder="Describe the app you want to build (e.g. 'A todo app with database')"
+            class="flex-1 p-2 border rounded shadow-inner"
+          />
+          <button class="bg-purple-600 text-white px-6 py-2 rounded font-medium hover:bg-purple-700 flex items-center gap-2">
+            <span>✨ Generate with AI</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Editors -->
+      <div class="flex-1 flex overflow-hidden">
+        <!-- UI Editor -->
+        <div class="flex-1 p-4 flex flex-col border-r">
+          <h2 class="font-bold mb-2 flex justify-between">
+              UI Schema (JSON)
+              <span class="text-xs font-normal text-gray-500">Auto-saved via button</span>
+          </h2>
+          <form method="POST" class="flex-1 flex flex-col">
+              <input type="hidden" name="action" value="save_ui" />
+              <textarea
+                name="ui_schema"
+                class="flex-1 font-mono text-sm p-4 bg-gray-50 border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >{uiSchemaStr}</textarea>
+              <button class="mt-2 bg-blue-600 text-white px-4 py-2 rounded self-end">Save UI</button>
+          </form>
+        </div>
+
+        <!-- Function Editor (Simplified - usually you'd select a function to edit) -->
+        <div class="flex-1 p-4 flex flex-col bg-gray-50">
+           <h2 class="font-bold mb-2">Serverless Functions</h2>
+           <div class="text-sm text-gray-500 mb-4">
+               Select a function from the sidebar to edit (Not implemented in this demo, showing list).
+               <br/>
+               The AI Agent generates these automatically.
+           </div>
+
+           <div class="space-y-4 overflow-y-auto">
+               {functions.map(fn => (
+                   <div class="bg-white p-4 rounded border shadow-sm">
+                       <h3 class="font-bold text-sm mb-2">{fn.name}</h3>
+                       <pre class="bg-gray-900 text-gray-100 p-2 rounded text-xs overflow-x-auto">{fn.code}</pre>
+                   </div>
+               ))}
+           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
