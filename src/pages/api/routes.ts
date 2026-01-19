@@ -11,43 +11,50 @@ import { join } from 'path';
  * GET /api/routes?path=/some/path
  * Returns the MFE spec for the given path
  */
+import type { APIRoute } from 'astro';
+import { readFile } from 'fs/promises';
+import { join } from 'path';
+
+/**
+ * Route Registry - Reads from mfe-registry.json
+ */
 export const GET: APIRoute = async ({ url }) => {
     const path = url.searchParams.get('path') || '/';
 
-    // Auto-discover MFEs from the filesystem
-    const mfeDir = join(process.cwd(), 'dist', 'client', 'mfe');
-    let availableMfes: string[] = [];
+    // Read registry
+    const registryPath = join(process.cwd(), 'public', 'mfe', 'mfe-registry.json');
+    let registry: any = { mfes: {} };
 
     try {
-        availableMfes = await readdir(mfeDir);
+        const fileContent = await readFile(registryPath, 'utf-8');
+        registry = JSON.parse(fileContent);
     } catch (e) {
-        // MFE directory doesn't exist yet
+        console.error('Failed to read MFE registry', e);
+        // Fallback or empty
     }
 
-    // Check for exact match
-    // Path comes in as /my-component, we check if my-component exists in MFE dir
     const pathWithoutSlash = path.startsWith('/') ? path.slice(1) : path;
-
-    // Handle paths with multiple segments (e.g., /products/123)
     const firstSegment = pathWithoutSlash.split('/')[0];
 
-    if (availableMfes.includes(firstSegment)) {
+    // Check availability in registry
+    if (registry.mfes[firstSegment]) {
+        const mfeDef = registry.mfes[firstSegment];
+
         // Extract any path parameters
         const pathParts = pathWithoutSlash.split('/');
-        const variables: Record<string, string> = {};
+        const variables: Record<string, string> = { ...mfeDef.variables };
 
         if (pathParts.length > 1) {
             variables['id'] = pathParts[1];
-            if (pathParts.length > 2) {
-                variables['extra'] = pathParts.slice(2).join('/');
-            }
         }
 
         return new Response(JSON.stringify({
             route: `/${firstSegment}`,
             mfe: {
-                source: `/mfe/${firstSegment}/index.js`,
-                variables
+                source: mfeDef.source,
+                integrity: mfeDef.integrity,
+                variables,
+                version: mfeDef.version
             }
         }), {
             status: 200,
@@ -59,7 +66,7 @@ export const GET: APIRoute = async ({ url }) => {
     return new Response(JSON.stringify({
         error: 'Route not found',
         path,
-        availableMfes
+        availableMfes: Object.keys(registry.mfes)
     }), {
         status: 404,
         headers: { 'Content-Type': 'application/json' }

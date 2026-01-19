@@ -1,0 +1,77 @@
+{
+    "mfes": {
+        "about-us": {
+            "source": "/mfe/about-us/index.js",
+            "integrity": "sha384-Qcwbprsr7dpPvg1eyR03A29f3FbWOCCvxKFoe2eS+LxwCx6nKJ2iY7eP6MAAnugf",
+            "version": "1.0.0",
+            "variables": {
+                "title": "about-us"
+            },
+            "description": "Micro-Frontend about-us"
+        },
+        "dashboard": {
+            "source": "/mfe/dashboard/index.js",
+            "integrity": "sha384-vgiJGZXA5IRoCDUf1k07HueL3WxZRu4fRE2+mWFPxL1yWRK1lhALQ/o8Bb20H2sc",
+            "version": "1.0.0",
+            "variables": {
+                "title": "dashboard"
+            },
+            "description": "Micro-Frontend dashboard"
+        },
+        "hc-appointments": {
+            "source": "/mfe/hc-appointments/index.js",
+            "version": "1.0.0",
+            "integrity": "sha384-TVGp8N0DTmWQG5oKpPYEHXgxDQ8cuLZ6X+gh9A6m/6sETk/qbyssVx4PiYZB2tfw",
+            "variables": {
+                "title": "Appointments"
+            },
+            "description": "Manage patient appointments and scheduling"
+        },
+        "hc-dashboard": {
+            "source": "/mfe/hc-dashboard/index.js",
+            "version": "1.0.0",
+            "integrity": "sha384-Ayf+5lG/BDNds5Q3d4/6huW4msqFZYopXevd+h9QtNbtaum5w80uO2J66A3wqtIl",
+            "variables": {
+                "title": "Healthcare Dashboard"
+            },
+            "description": "Main dashboard with stats, charts, and recent activity"
+        },
+        "hc-patients": {
+            "source": "/mfe/hc-patients/index.js",
+            "version": "1.0.0",
+            "integrity": "sha384-P2QBa7TdM/iEceCcgK/LXYBEkKwSwi5U0+0jjiRvppbAcmvzreOeXau5kuDArF5w",
+            "variables": {
+                "title": "Patients"
+            },
+            "description": "Patient directory and search"
+        },
+        "hc-records": {
+            "source": "/mfe/hc-records/index.js",
+            "version": "1.0.0",
+            "integrity": "sha384-+D8O8PvJnWGXbTcyaxROV7+/q5vEpKX3gC9xLPhntD1y1nDx45Xlt95CC8auy+Ki",
+            "variables": {
+                "title": "Medical Records"
+            },
+            "description": "Patient medical records and history"
+        },
+        "hc-settings": {
+            "source": "/mfe/hc-settings/index.js",
+            "version": "1.0.0",
+            "integrity": "sha384-yjxKCs5dkzSmR0utyD2s0oO1gYO3UfOWKX+DJnv/npvjThNP3ZxSmnR+QBsAcy7H",
+            "variables": {
+                "title": "Settings"
+            },
+            "description": "User preferences and system settings"
+        },
+        "my-component": {
+            "source": "/mfe/my-component/index.js",
+            "integrity": "sha384-BalYjw+H8SpllLv4O4uhPOx7czl6pCuzXy6l34rZ9XuwN2r3tqLY/u/YaFPSAM65",
+            "version": "1.0.0",
+            "variables": {
+                "title": "my-component"
+            },
+            "description": "Micro-Frontend my-component"
+        }
+    },
+    "generatedAt": "2026-01-18T20:33:11.380Z"
+}

@@ -1,9 +1,7 @@
-import React, { Suspense, lazy, useMemo, useState, createContext, useContext } from 'react';
-
-// Expose React globally for remote MFEs
-if (typeof window !== 'undefined') {
-    (window as any).React = React;
-}
+import React, { useEffect, useRef, useState, createContext, useContext } from 'react';
+import { MFERuntime, type MFEModule, type MFERuntimeContext } from './MFERuntime';
+import { globalEventBus } from './EventBus';
+import { dependencies } from './dependencies';
 
 /**
  * MFE Spec returned from the Route Registry
@@ -12,6 +10,7 @@ export interface MFESpec {
     source: string;
     integrity?: string;
     variables?: Record<string, any>;
+    version?: string;
 }
 
 /**
@@ -24,14 +23,6 @@ export interface MFEContext {
     navigate: (path: string) => void;
     callAPI: (url: string, opts?: RequestInit) => Promise<any>;
 }
-
-const MFEContextReact = createContext<MFEContext | null>(null);
-
-export const useMFEContext = () => {
-    const ctx = useContext(MFEContextReact);
-    if (!ctx) throw new Error('useMFEContext must be used within RemoteRenderer');
-    return ctx;
-};
 
 /**
  * Error Boundary for catching MFE errors
@@ -51,7 +42,6 @@ class ErrorBoundary extends React.Component<
 
     componentDidCatch(error: Error, info: React.ErrorInfo) {
         console.error('[MFE Error]', error, info);
-        // TODO: Send to error tracking service
     }
 
     render() {
@@ -66,13 +56,6 @@ class ErrorBoundary extends React.Component<
         return this.props.children;
     }
 }
-
-/**
- * Dynamic loader for remote ES modules
- */
-const loadRemoteMFE = (url: string) => {
-    return lazy(() => import(/* @vite-ignore */ url));
-};
 
 /**
  * Skeleton loader while MFE is loading
@@ -94,41 +77,95 @@ function PageSkeleton() {
 
 /**
  * RemoteRenderer - The core component that loads and renders MFEs
+ * Uses MFERuntime to load and mount the MFE into a container.
  */
 export function RemoteRenderer({ mfeSpec }: { mfeSpec: MFESpec }) {
-    const [globalState, setGlobalStateRaw] = useState<Record<string, any>>({});
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<Error | null>(null);
 
-    // Memoize the lazy component to prevent re-loading
-    const Component = useMemo(() => loadRemoteMFE(mfeSpec.source), [mfeSpec.source]);
+    useEffect(() => {
+        let cleanup: (() => void) | void;
+        let mounted = true;
 
-    // Wrapper for setting state with key-path support
-    const setGlobalState = (key: string, value: any) => {
-        setGlobalStateRaw(prev => ({ ...prev, [key]: value }));
-    };
+        const loadAndMount = async () => {
+            if (!containerRef.current) return;
 
-    // Build the context object
-    const context: MFEContext = {
-        variables: mfeSpec.variables || {},
-        globalState,
-        setGlobalState,
-        navigate: (path: string) => {
-            window.location.href = path;
-        },
-        callAPI: async (url: string, opts?: RequestInit) => {
-            const res = await fetch(url, opts);
-            if (!res.ok) throw new Error(`API Error: ${res.status}`);
-            return res.json();
-        }
-    };
+            setLoading(true);
+            setError(null);
+
+            try {
+                // Load the MFE module
+                const module = await MFERuntime.load(mfeSpec.source, mfeSpec.integrity);
+
+                if (!mounted) return;
+
+                // Prepare context
+                const context: Omit<MFERuntimeContext, 'container'> = {
+                    deps: dependencies,
+                    eventBus: globalEventBus,
+                    config: mfeSpec.variables || {}
+                };
+
+                // Mount the MFE
+                // We use a Shadow DOM for isolation
+                if (!containerRef.current.shadowRoot) {
+                    containerRef.current.attachShadow({ mode: 'open' });
+                }
+                const shadowRoot = containerRef.current.shadowRoot!;
+
+                // Clear previous content
+                shadowRoot.innerHTML = '';
+
+                // Inject Styles from Host
+                // This is a naive but effective way to share Tailwind styles
+                Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).forEach(styleNode => {
+                    shadowRoot.appendChild(styleNode.cloneNode(true));
+                });
+
+                // Create a mount point inside Shadow DOM
+                const mountPoint = document.createElement('div');
+                mountPoint.id = 'mfe-root';
+                mountPoint.style.height = '100%';
+                shadowRoot.appendChild(mountPoint);
+
+                cleanup = MFERuntime.mount(module, mountPoint, context);
+
+            } catch (err: any) {
+                if (mounted) {
+                    console.error("Failed to load/mount MFE:", err);
+                    setError(err);
+                }
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        };
+
+        loadAndMount();
+
+        return () => {
+            mounted = false;
+            if (cleanup && typeof cleanup === 'function') {
+                cleanup();
+            }
+        };
+    }, [mfeSpec]); // Re-mount if spec changes
+
+    if (error) {
+        return (
+            <div className="p-6 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                <h3 className="font-bold mb-2">Failed to load Micro-Frontend</h3>
+                <p className="text-sm font-mono">{error.message}</p>
+                <p className="text-xs mt-2 text-red-500">Source: {mfeSpec.source}</p>
+            </div>
+        );
+    }
 
     return (
-        <MFEContextReact.Provider value={context}>
-            <ErrorBoundary>
-                <Suspense fallback={<PageSkeleton />}>
-                    <Component context={context} />
-                </Suspense>
-            </ErrorBoundary>
-        </MFEContextReact.Provider>
+        <div className="mfe-container relative min-h-[200px]">
+            {loading && <PageSkeleton />}
+            <div ref={containerRef} className={loading ? 'hidden' : 'block'} />
+        </div>
     );
 }
 
@@ -140,7 +177,7 @@ export function useDynamicRoute(path: string) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    React.useEffect(() => {
+    useEffect(() => {
         setLoading(true);
         fetch(`/api/routes?path=${encodeURIComponent(path)}`)
             .then(res => {
@@ -160,3 +197,4 @@ export function useDynamicRoute(path: string) {
 
     return { mfeSpec, loading, error };
 }
+
