@@ -33,6 +33,24 @@ export class EventBus {
     clear() {
         this.listeners = {};
     }
+
+    /**
+     * Returns a scoped version of the event bus that automatically
+     * prefixes all events with the given namespace.
+     */
+    scoped(namespace: string): EventBus {
+        const bus = this;
+        return {
+            on: (event: string, handler: EventHandler) => bus.on(`${namespace}:${event}`, handler),
+            emit: (event: string, data: any) => bus.emit(`${namespace}:${event}`, data),
+            clear: () => {
+                // Only clear events for this namespace? 
+                // Or just don't allow clearing from scoped bus
+                console.warn('[EventBus] clear() is not supported on scoped bus');
+            },
+            scoped: (sub: string) => bus.scoped(`${namespace}:${sub}`)
+        } as any;
+    }
 }
 
 export const globalEventBus = new EventBus();

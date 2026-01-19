@@ -2,11 +2,13 @@ import React, { useEffect, useRef, useState, createContext, useContext } from 'r
 import { MFERuntime, type MFEModule, type MFERuntimeContext } from './MFERuntime';
 import { globalEventBus } from './EventBus';
 import { dependencies } from './dependencies';
+import { errorReporter } from './ErrorReporter';
 
 /**
  * MFE Spec returned from the Route Registry
  */
 export interface MFESpec {
+    name: string; // The unique identifier for this MFE
     source: string;
     integrity?: string;
     variables?: Record<string, any>;
@@ -28,7 +30,7 @@ export interface MFEContext {
  * Error Boundary for catching MFE errors
  */
 class ErrorBoundary extends React.Component<
-    { children: React.ReactNode; fallback?: React.ReactNode },
+    { children: React.ReactNode; mfeName?: string; fallback?: React.ReactNode },
     { hasError: boolean; error?: Error }
 > {
     constructor(props: any) {
@@ -41,14 +43,18 @@ class ErrorBoundary extends React.Component<
     }
 
     componentDidCatch(error: Error, info: React.ErrorInfo) {
-        console.error('[MFE Error]', error, info);
+        errorReporter.report(error, {
+            mfeName: this.props.mfeName,
+            action: 'render',
+            extra: { componentStack: info.componentStack }
+        });
     }
 
     render() {
         if (this.state.hasError) {
             return this.props.fallback || (
                 <div className="p-6 bg-red-50 border border-red-200 rounded-lg text-red-700">
-                    <h3 className="font-bold mb-2">Component Error</h3>
+                    <h3 className="font-bold mb-2">Component Error {this.props.mfeName ? `(${this.props.mfeName})` : ''}</h3>
                     <p className="text-sm font-mono">{this.state.error?.message}</p>
                 </div>
             );
@@ -103,7 +109,7 @@ export function RemoteRenderer({ mfeSpec }: { mfeSpec: MFESpec }) {
                 // Prepare context
                 const context: Omit<MFERuntimeContext, 'container'> = {
                     deps: dependencies,
-                    eventBus: globalEventBus,
+                    eventBus: globalEventBus.scoped(mfeSpec.name),
                     config: mfeSpec.variables || {}
                 };
 
@@ -118,9 +124,15 @@ export function RemoteRenderer({ mfeSpec }: { mfeSpec: MFESpec }) {
                 shadowRoot.innerHTML = '';
 
                 // Inject Styles from Host
-                // This is a naive but effective way to share Tailwind styles
+                // Optimized to only clone relevant styles (Tailwind, utilities)
                 Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).forEach(styleNode => {
-                    shadowRoot.appendChild(styleNode.cloneNode(true));
+                    const isTailwind = styleNode.textContent?.includes('--tw-') ||
+                        (styleNode instanceof HTMLLinkElement && styleNode.href.includes('tailwind'));
+                    const isShared = styleNode.hasAttribute('data-mfe-shared');
+
+                    if (isTailwind || isShared) {
+                        shadowRoot.appendChild(styleNode.cloneNode(true));
+                    }
                 });
 
                 // Create a mount point inside Shadow DOM
@@ -133,7 +145,7 @@ export function RemoteRenderer({ mfeSpec }: { mfeSpec: MFESpec }) {
 
             } catch (err: any) {
                 if (mounted) {
-                    console.error("Failed to load/mount MFE:", err);
+                    errorReporter.report(err, { mfeName: mfeSpec.name, action: 'mount' });
                     setError(err);
                 }
             } finally {
@@ -154,7 +166,7 @@ export function RemoteRenderer({ mfeSpec }: { mfeSpec: MFESpec }) {
     if (error) {
         return (
             <div className="p-6 bg-red-50 border border-red-200 rounded-lg text-red-700">
-                <h3 className="font-bold mb-2">Failed to load Micro-Frontend</h3>
+                <h3 className="font-bold mb-2">Failed to load Micro-Frontend ({mfeSpec.name})</h3>
                 <p className="text-sm font-mono">{error.message}</p>
                 <p className="text-xs mt-2 text-red-500">Source: {mfeSpec.source}</p>
             </div>
@@ -162,10 +174,12 @@ export function RemoteRenderer({ mfeSpec }: { mfeSpec: MFESpec }) {
     }
 
     return (
-        <div className="mfe-container relative min-h-[200px]">
-            {loading && <PageSkeleton />}
-            <div ref={containerRef} className={loading ? 'hidden' : 'block'} />
-        </div>
+        <ErrorBoundary mfeName={mfeSpec.name}>
+            <div className="mfe-container relative min-h-[200px]">
+                {loading && <PageSkeleton />}
+                <div ref={containerRef} className={loading ? 'hidden' : 'block'} />
+            </div>
+        </ErrorBoundary>
     );
 }
 

@@ -8,10 +8,26 @@ export const GET: APIRoute = async ({ url }) => {
     try {
         const fileContent = await readFile(registryPath, 'utf-8');
         const registry = JSON.parse(fileContent);
+
+        const targetMfe = url.searchParams.get('mfe');
         const report: Record<string, any> = {};
         let allHealthy = true;
 
-        for (const [key, mfe] of Object.entries(registry.mfes) as [string, any][]) {
+        const mfesToCheck = targetMfe ?
+            (registry.mfes[targetMfe] ? { [targetMfe]: registry.mfes[targetMfe] } : {}) :
+            registry.mfes;
+
+        if (targetMfe && !registry.mfes[targetMfe]) {
+            return new Response(JSON.stringify({
+                status: 'error',
+                message: `MFE "${targetMfe}" not found in registry`
+            }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        for (const [key, mfe] of Object.entries(mfesToCheck) as [string, any][]) {
             // Check if source file exists
             const sourcePath = join(process.cwd(), 'public', mfe.source);
             try {

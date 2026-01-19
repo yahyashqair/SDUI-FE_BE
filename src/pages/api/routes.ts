@@ -51,6 +51,7 @@ export const GET: APIRoute = async ({ url }) => {
         return new Response(JSON.stringify({
             route: `/${firstSegment}`,
             mfe: {
+                name: firstSegment,
                 source: mfeDef.source,
                 integrity: mfeDef.integrity,
                 variables,
