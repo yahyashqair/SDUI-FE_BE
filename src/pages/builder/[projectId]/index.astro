@@ -2,7 +2,7 @@
 import Layout from '../../../layouts/Layout.astro';
 import { PlatformDB } from '../../../db/platform';
 import { FileSystem } from '../../../db/fs';
-import { generateApp } from '../../../lib/ai/agent';
+import { Agent } from '../../../lib/ai/agent';
 import { initTenantDB } from '../../../db/tenant';
 
 const { projectId } = Astro.params;
@@ -24,21 +24,9 @@ if (Astro.request.method === 'POST') {
 
   if (action === 'generate') {
     const prompt = formData.get('prompt') as string;
-    const generated = await generateApp(prompt);
-
-    // Save generated artifacts
-    PlatformDB.saveBlueprint(project.id, generated.uiSchema, generated.dataSchema);
-    initTenantDB(project.id, generated.dataSchema);
-
-    // Save functions to FileSystem
-    for (const fn of generated.functions) {
-      const fileName = `${fn.name}.js`;
-      await FileSystem.writeFile(project.id, fileName, fn.code);
-      // Register mapping
-      PlatformDB.saveFunction(project.id, fn.name, fileName);
-    }
-
-    await FileSystem.commit(project.id, `AI Generated: ${prompt}`);
+    // New Agent Process
+    const result = await Agent.process(project.id, prompt);
+    console.log(result.logs); // Could expose logs to UI
 
   } else if (action === 'save_ui') {
       const uiJson = formData.get('ui_schema') as string;
@@ -85,7 +73,11 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-const files = FileSystem.listFiles(project.id);
+const files = [
+    ...FileSystem.listFiles(project.id, ''),
+    ...FileSystem.listFiles(project.id, 'frontend').map(f => ({ ...f, path: `frontend/${f.name}` })),
+    ...FileSystem.listFiles(project.id, 'lib').map(f => ({ ...f, path: `lib/${f.name}` }))
+];
 const uiSchemaStr = blueprint ? JSON.stringify(JSON.parse(blueprint.ui_schema), null, 2) : '{}';
 ---
 
