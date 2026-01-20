@@ -1,3 +1,4 @@
+
 import { AITools } from './tools';
 import { FileSystem } from '../db/fs';
 
@@ -13,34 +14,64 @@ interface AIResponse {
     content?: string;
 }
 
-// Tool Definitions for OpenAI
-const TOOLS_SCHEMA: any[] = [
-    {
-        type: 'function',
-        function: {
-            name: 'updateDatabaseSchema',
-            description: 'Updates the SQLite database schema for the project based on the application requirements.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    schema: {
-                        type: 'object',
-                        description: 'The JSON schema definition for the database tables.',
-                        properties: {
-                            tables: {
-                                type: 'array',
-                                items: {
-                                    type: 'object',
-                                    properties: {
-                                        name: { type: 'string' },
-                                        columns: {
-                                            type: 'array',
-                                            items: {
-                                                type: 'object',
-                                                properties: {
-                                                    name: { type: 'string' },
-                                                    type: { type: 'string' }
-                                                }
+// ------------------------------------------------------------------
+// Tool Definitions
+// ------------------------------------------------------------------
+
+const READ_CONTEXT_TOOL = {
+    type: 'function',
+    function: {
+        name: 'readProjectContext',
+        description: 'Reads the current project file structure and key configuration files.',
+        parameters: {
+            type: 'object',
+            properties: {},
+            required: []
+        }
+    }
+};
+
+const DEFINE_ROUTE_TOOL = {
+    type: 'function',
+    function: {
+        name: 'defineRoute',
+        description: 'Maps a URL path to a Micro-Frontend (MFE).',
+        parameters: {
+            type: 'object',
+            properties: {
+                path: { type: 'string', description: 'The URL path (e.g., /checkout)' },
+                mfeName: { type: 'string', description: 'The name of the MFE to render (e.g., CheckoutMFE)' }
+            },
+            required: ['path', 'mfeName']
+        }
+    }
+};
+
+const DB_TOOL = {
+    type: 'function',
+    function: {
+        name: 'updateDatabaseSchema',
+        description: 'Updates the SQLite database schema.',
+        parameters: {
+            type: 'object',
+            properties: {
+                schema: {
+                    type: 'object',
+                    description: 'The JSON schema definition for tables.',
+                    properties: {
+                        tables: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    name: { type: 'string' },
+                                    columns: {
+                                        type: 'array',
+                                        items: {
+                                            type: 'object',
+                                            properties: {
+                                                name: { type: 'string' },
+                                                type: { type: 'string' }
                                             }
                                         }
                                     }
@@ -48,65 +79,66 @@ const TOOLS_SCHEMA: any[] = [
                             }
                         }
                     }
-                },
-                required: ['schema']
-            }
-        }
-    },
-    {
-        type: 'function',
-        function: {
-            name: 'createBackendFunction',
-            description: 'Creates or updates a Node.js backend serverless function.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    name: { type: 'string', description: 'The name of the function (e.g., getTasks)' },
-                    code: { type: 'string', description: 'The complete Node.js code for the function. Must export a handler.' }
-                },
-                required: ['name', 'code']
-            }
-        }
-    },
-    {
-        type: 'function',
-        function: {
-            name: 'createFrontendComponent',
-            description: 'Creates or updates a React Micro-Frontend (MFE) component.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    name: { type: 'string', description: 'The name of the component (e.g., TaskItem)' },
-                    code: { type: 'string', description: 'The complete React component code (TSX).' }
-                },
-                required: ['name', 'code']
-            }
-        }
-    },
-    {
-        type: 'function',
-        function: {
-            name: 'updateUILayout',
-            description: 'Updates the Server-Driven UI (SDUI) layout schema.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    layout: { type: 'object', description: 'The JSON hierarchy for the UI.' }
-                },
-                required: ['layout']
-            }
+                }
+            },
+            required: ['schema']
         }
     }
+};
+
+const BACKEND_TOOL = {
+    type: 'function',
+    function: {
+        name: 'createBackendFunction',
+        description: 'Creates a Node.js serverless function.',
+        parameters: {
+            type: 'object',
+            properties: {
+                name: { type: 'string', description: 'Function name' },
+                code: { type: 'string', description: 'Node.js code exporting a handler' }
+            },
+            required: ['name', 'code']
+        }
+    }
+};
+
+const FRONTEND_TOOL = {
+    type: 'function',
+    function: {
+        name: 'createFrontendComponent',
+        description: 'Creates a React Micro-Frontend (MFE).',
+        parameters: {
+            type: 'object',
+            properties: {
+                name: { type: 'string', description: 'Component name' },
+                code: { type: 'string', description: 'React component code (TSX)' }
+            },
+            required: ['name', 'code']
+        }
+    }
+};
+
+// specialized toolsets
+const ARCHITECT_TOOLS = [READ_CONTEXT_TOOL];
+const ENGINEER_TOOLS = [
+    READ_CONTEXT_TOOL,
+    DEFINE_ROUTE_TOOL,
+    DB_TOOL,
+    BACKEND_TOOL,
+    FRONTEND_TOOL
 ];
 
-// OpenAI Client
-async function callAI(history: any[]): Promise<AIResponse> {
-    const API_KEY = process.env.AI_API_KEY;
-    const API_URL = process.env.AI_API_URL || 'https://api.openai.com/v1/chat/completions';
+// ------------------------------------------------------------------
+// AI Client
+// ------------------------------------------------------------------
+
+async function callAI(history: any[], tools: any[], systemPrompt: string): Promise<AIResponse> {
+    const API_KEY = import.meta.env.AI_API_KEY || process.env.AI_API_KEY || '08a365632d874dc39ecf74132dd31c7c.QkyVYKV250deAewc';
+    const API_URL = import.meta.env.AI_API_URL || process.env.AI_API_URL || 'https://api.z.ai/api/coding/paas/v4/chat/completions';
 
     if (!API_KEY) {
-        console.warn("No AI_API_KEY found, falling back to mock planner for safety.");
-        return mockPlanner(history);
+        console.warn("No AI_API_KEY found, using mock.");
+        return mockPlanner(history); // Use mock if no key
     }
 
     try {
@@ -117,11 +149,10 @@ async function callAI(history: any[]): Promise<AIResponse> {
                 'Authorization': `Bearer ${API_KEY}`
             },
             body: JSON.stringify({
-                model: 'gpt-4o', // Or usage-defined
+                model: 'GLM-4.7',
                 messages: [
-                    { role: 'system', content: 'You are an expert full-stack developer building a serverless app. You have access to tools to modify the database, backend functions, and frontend components. Use them to build what the user asks.' },
+                    { role: 'system', content: systemPrompt },
                     ...history.map(h => {
-                        // Simplify history for the API to avoid errors if extra fields exist
                         if (h.role === 'tool') {
                             return { role: 'tool', tool_call_id: h.tool_call_id, name: h.name, content: h.content };
                         }
@@ -131,8 +162,8 @@ async function callAI(history: any[]): Promise<AIResponse> {
                         return { role: h.role, content: h.content };
                     })
                 ],
-                tools: TOOLS_SCHEMA,
-                tool_choice: 'auto'
+                tools: tools.length > 0 ? tools : undefined,
+                tool_choice: tools.length > 0 ? 'auto' : undefined
             })
         });
 
@@ -150,224 +181,84 @@ async function callAI(history: any[]): Promise<AIResponse> {
         };
     } catch (e: any) {
         console.error("AI Call Failed", e);
-        // Fallback to mock if API fails? Or just return error content
-        return { content: `Error calling AI: ${e.message}` };
+        return { content: `Error: ${e.message}` };
     }
 }
 
-/**
- * Mock Planner - Fallback
- */
-function mockPlanner(history: any[]): AIResponse {
-    // Get the last user message to determine current intent
-    const lastUserMsg = history.filter(h => h.role === 'user').pop();
-    const prompt = lastUserMsg ? lastUserMsg.content : '';
-    const p = prompt.toLowerCase();
+// ------------------------------------------------------------------
+// Agents
+// ------------------------------------------------------------------
 
-    // Check for previous errors in history to simulate "Fixing"
-    const lastToolResult = history[history.length - 1];
-    if (lastToolResult && lastToolResult.role === 'tool' && !JSON.parse(lastToolResult.content).success) {
-        // SIMULATION: If we see an error, try to fix it.
-        // For verified demo purposes, if we see a build error in TaskItem, we re-issue the createFrontendComponent with "fixed" code.
-        const errorContent = JSON.parse(lastToolResult.content);
-        if (errorContent.error && errorContent.error.includes('build failed')) {
-            return {
-                tool_calls: [{
-                    function: {
-                        name: 'createFrontendComponent',
-                        arguments: JSON.stringify({
-                            name: 'TaskItem',
-                            code: `import React from 'react';
-// Fixed version without syntax errors
-export default function TaskItem({ task, onToggle }) {
-    return (
-        <div style={{ padding: '10px' }}>
-            {task.title}
-        </div>
-    );
-}`                        })
-                    }
-                }]
-            };
-        }
-    }
-
-    // Scenario: "Todo App"
-    if (p.includes('todo') || p.includes('task')) {
-        return {
-            tool_calls: [
-                {
-                    function: {
-                        name: 'updateDatabaseSchema',
-                        arguments: JSON.stringify({
-                            schema: {
-                                tables: [{
-                                    name: 'tasks',
-                                    columns: [
-                                        { name: 'id', type: 'INTEGER PRIMARY KEY AUTOINCREMENT' },
-                                        { name: 'title', type: 'TEXT' },
-                                        { name: 'completed', type: 'BOOLEAN DEFAULT 0' }
-                                    ]
-                                }]
-                            }
-                        })
-                    }
-                },
-                {
-                    function: {
-                        name: 'createBackendFunction',
-                        arguments: JSON.stringify({
-                            name: 'getTasks',
-                            code: `
-const db = require('./lib/db');
-module.exports = async () => db.query("SELECT * FROM tasks");
-                            `
-                        })
-                    }
-                },
-                {
-                    function: {
-                        name: 'createBackendFunction',
-                        arguments: JSON.stringify({
-                            name: 'addTask',
-                            code: `
-const db = require('./lib/db');
-module.exports = async (params) => {
-    db.query("INSERT INTO tasks (title) VALUES (?)", params.title);
-    return { success: true };
-}
-                            `
-                        })
-                    }
-                },
-                {
-                    function: {
-                        name: 'createFrontendComponent',
-                        arguments: JSON.stringify({
-                            name: 'TaskItem',
-                            code: `
-import React from 'react';
-
-// A Micro Frontend Component for a Task Item
-export default function TaskItem({ task, onToggle }) {
-    return (
-        <div style={{ padding: '10px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ textDecoration: task.completed ? 'line-through' : 'none' }}>
-                {task.title}
-            </span>
-            <button onClick={() => onToggle(task.id)} style={{ fontSize: '12px' }}>
-                {task.completed ? 'Undo' : 'Done'}
-            </button>
-        </div>
-    );
-}
-                            `
-                        })
-                    }
-                },
-                {
-                    function: {
-                        name: 'updateUILayout',
-                        arguments: JSON.stringify({
-                            layout: {
-                                type: 'container',
-                                props: { className: 'p-8 max-w-md mx-auto' },
-                                children: [
-                                    { type: 'hero', props: { title: 'AI Todo List' } },
-                                    {
-                                        type: 'input',
-                                        props: { name: 'newTask', placeholder: 'New Task' }
-                                    },
-                                    {
-                                        type: 'button',
-                                        props: {
-                                            label: 'Add',
-                                            action: {
-                                                type: 'server',
-                                                functionName: 'addTask',
-                                                collectValues: ['newTask'],
-                                                onSuccess: 'refresh'
-                                            }
-                                        }
-                                    },
-                                    {
-                                        type: 'list',
-                                        props: {
-                                            itemsSource: { type: 'server', functionName: 'getTasks' },
-                                            itemTemplate: {
-                                                type: 'remote-mfe',
-                                                props: {
-                                                    source: '/api/mfe/{projectId}/TaskItem.js',
-                                                    task: '{item}', // Pass the whole item as prop
-                                                    onToggle: { // Logic for actions inside MFE is tricky via JSON, usually we pass a callback ID or similar.
-                                                        // For this demo, let's keep it simple.
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                ]
-                            }
-                        })
-                    }
-                }
-            ]
-        };
-    }
-
-    return { content: "I don't know how to build that yet." };
-}
-
-export const Agent = {
+export const ArchitectAgent = {
     process: async (projectId: string, prompt: string) => {
-        console.log(`[Agent] Processing prompt: "${prompt}" for project ${projectId}`);
+        const systemPrompt = `You are a Senior Software Architect. 
+Your goal is to design a robust microservices and micro-frontend architecture based on the user's request.
+1. Analyze the requirements.
+2. checking existing project context using 'readProjectContext'.
+3. Propose a design including: 
+    - Micro-Frontends (MFEs) needed
+    - Backend Services (Functions) needed
+    - Database Schema changes
+    - Routes
+Output your design as a clear markdown document. Do NOT write code yet.`;
 
-        // 1. Initialize Git/FS if new
+        const history = [{ role: 'user', content: prompt }];
+        // Only read context allowed for Architect
+        return await callAI(history, ARCHITECT_TOOLS, systemPrompt);
+    }
+};
+
+export const EngineerAgent = {
+    process: async (projectId: string, instructions: string) => {
         await FileSystem.initProject(projectId);
 
+        const systemPrompt = `You are a Senior Software Engineer.
+Your goal is to IMPLEMENT the architecture designed by the Architect.
+You have access to tools to create DB schemas, backend functions, and frontend components.
+Follow the instructions precisely.`;
+
         const logs: string[] = [];
-        let history: any[] = [{ role: 'user', content: prompt }];
+        let history: any[] = [{ role: 'user', content: instructions }];
         let attempts = 0;
-        const MAX_ATTEMPTS = 3;
+        const MAX_ATTEMPTS = 5;
 
         while (attempts < MAX_ATTEMPTS) {
             attempts++;
-            console.log(`[Agent] Attempt ${attempts}/${MAX_ATTEMPTS}`);
+            console.log(`[Engineer] Step ${attempts}`);
 
-            // 2. "Think" - Get Plan (Mock or Real)
-            // We pass the full history so the "AI" sees previous errors
-            const plan = await callAI(history);
+            const plan = await callAI(history, ENGINEER_TOOLS, systemPrompt);
 
             if (plan.content) {
-                logs.push(`🤖 AI: ${plan.content}`);
+                logs.push(`🤖 Engineer: ${plan.content}`);
                 history.push({ role: 'assistant', content: plan.content });
             }
 
             if (!plan.tool_calls || plan.tool_calls.length === 0) {
-                logs.push(`ℹ️ AI finished or gave up after ${attempts} attempts.`);
+                logs.push(`ℹ️ Engineer finished.`);
                 break;
             }
 
-            // Record assistant intent to call tools
             history.push({
                 role: 'assistant',
                 tool_calls: plan.tool_calls,
                 content: plan.content || null
             });
 
-            // 3. Execute Tools
-            let hasErrors = false;
-
             for (const call of plan.tool_calls) {
                 const fnName = call.function.name;
                 const args = JSON.parse(call.function.arguments);
 
-                logs.push(`Calling tool: ${fnName}...`);
-                console.log(`[Agent] Executing ${fnName}`);
+                logs.push(`Executing: ${fnName}...`);
 
                 let result;
                 try {
                     switch (fnName) {
+                        case 'readProjectContext':
+                            result = await AITools.readProjectContext(projectId);
+                            break;
+                        case 'defineRoute':
+                            result = await AITools.defineRoute(projectId, args.path, args.mfeName);
+                            break;
                         case 'updateDatabaseSchema':
                             result = await AITools.updateDatabaseSchema(projectId, args.schema);
                             break;
@@ -377,9 +268,6 @@ export const Agent = {
                         case 'createFrontendComponent':
                             result = await AITools.createFrontendComponent(projectId, args.name, args.code);
                             break;
-                        case 'updateUILayout':
-                            result = await AITools.updateUILayout(projectId, args.layout);
-                            break;
                         default:
                             result = { success: false, error: `Unknown tool: ${fnName}` };
                     }
@@ -387,52 +275,48 @@ export const Agent = {
                     result = { success: false, error: e.message };
                 }
 
-                if (result?.success) {
-                    logs.push(`✓ Tool ${fnName} succeeded.`);
-                    // Feedback to AI: Success
-                    history.push({
-                        role: 'tool',
-                        tool_call_id: call.id || 'mock_id', // Handle mock case where ID is missing
-                        name: fnName,
-                        content: JSON.stringify({ success: true, data: result.data })
-                    });
-                } else {
-                    hasErrors = true;
-                    const errorMsg = result?.error || 'Unknown error';
-                    logs.push(`✗ Tool ${fnName} failed: ${errorMsg}`);
+                history.push({
+                    role: 'tool',
+                    tool_call_id: call.id || 'mock_id',
+                    name: fnName,
+                    content: JSON.stringify(result)
+                });
 
-                    // Feedback to AI: Failure with details!
-                    // This is the key "Feedback Loop" requested
-                    history.push({
-                        role: 'tool',
-                        tool_call_id: call.id || 'mock_id',
-                        name: fnName,
-                        content: JSON.stringify({ success: false, error: errorMsg })
-                    });
+                if (!result.success) {
+                    logs.push(`❌ Tool failed: ${result.error}`);
+                } else {
+                    logs.push(`✅ Tool success`);
                 }
             }
 
-            // 4. Commit Changes (Checkpoint)
-            await FileSystem.commit(projectId, `AI Agent: Attempt ${attempts}`);
-
-            if (!hasErrors) {
-                logs.push('✨ All steps completed successfully.');
-                break;
-            } else {
-                logs.push('⚠️ Errors detected. AI will attempt to fix...');
-                // The loop continues, 'mockPlanner' (or real LLM) will be called again with the error history
-            }
-        }
-
-        if (attempts >= MAX_ATTEMPTS) {
-            logs.push('❌ Max attempts reached. Some tasks may have failed.');
+            await FileSystem.commit(projectId, `Engineer: Step ${attempts}`);
         }
 
         return { success: true, logs };
     }
 };
 
-// Backward compatibility export
-export const generateApp = async (prompt: string) => {
-    return { uiSchema: {}, dataSchema: {}, functions: [] };
+// ------------------------------------------------------------------
+// Mock Planner (Simplified for brevity)
+// ------------------------------------------------------------------
+function mockPlanner(history: any[]): AIResponse {
+    // Basic mock implementation for testing without API key
+    // Returns a simple plan for "todo" app if detected
+    const lastUserMsg = history.filter(h => h.role === 'user').pop();
+    const prompt = (lastUserMsg?.content || '').toLowerCase();
+
+    if (prompt.includes('todo')) {
+        return {
+            content: "Mock plan for Todo App",
+            tool_calls: [
+                {
+                    function: {
+                        name: 'createBackendFunction',
+                        arguments: JSON.stringify({ name: 'test', code: 'module.exports = () => ({ok:true})' })
+                    }
+                }
+            ]
+        };
+    }
+    return { content: "Mock: I need a real API key to think." };
 }

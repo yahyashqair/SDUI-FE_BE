@@ -1,451 +1,369 @@
 ---
 /**
- * AI Component Builder with Live Preview
+ * AI System Builder
+ * Supports Architect (Planning) and Engineer (Execution) modes.
  */
 export const prerender = false;
 
-import Layout from '../../layouts/Layout.astro';
+import Layout from "../../layouts/Layout.astro";
 ---
 
-<Layout title="AI Component Builder">
+<Layout title="AI System Builder">
     <main id="app"></main>
+
+    <!-- Load React and Markdown library -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
-        import React, { useState, useRef, useEffect } from 'react';
-        import { createRoot } from 'react-dom/client';
+        import React, { useState, useEffect, useRef } from "react";
+        import { createRoot } from "react-dom/client";
 
-        // Expose React globally for MFE compatibility
+        // Expose React
         (window as any).React = React;
-
         const h = React.createElement;
 
-        // Live Preview Component - evaluates and renders generated code
-        function LivePreview({ code }: { code: string }) {
-            const [Component, setComponent] = useState<React.FC<any> | null>(null);
-            const [error, setError] = useState<string | null>(null);
+        // Role Types
+        type AgentRole = "architect" | "engineer";
 
-            useEffect(() => {
-                if (!code || code.trim().length < 50) {
-                    setComponent(null);
-                    setError(null);
-                    return;
-                }
-
-                try {
-                    // Create a blob URL from the code
-                    const blob = new Blob([code], { type: 'text/javascript' });
-                    const url = URL.createObjectURL(blob);
-
-                    // Dynamically import the module
-                    import(/* @vite-ignore */ url)
-                        .then((module) => {
-                            if (module.default && typeof module.default === 'function') {
-                                setComponent(() => module.default);
-                                setError(null);
-                            } else {
-                                setError('No default export found');
-                            }
-                        })
-                        .catch((e) => {
-                            setError(e.message);
-                        })
-                        .finally(() => {
-                            URL.revokeObjectURL(url);
-                        });
-                } catch (e) {
-                    setError(e instanceof Error ? e.message : 'Unknown error');
-                }
-            }, [code]);
-
-            // Mock context for preview
-            const mockContext = {
-                variables: { preview: true },
-                globalState: {},
-                setGlobalState: () => {},
-                navigate: (path: string) => alert(`Navigate to: ${path}`),
-                callAPI: async (url: string) => ({ mock: true, url })
-            };
-
-            if (error) {
-                return h('div', { 
-                    style: { 
-                        padding: '1rem', 
-                        background: '#fef2f2', 
-                        border: '1px solid #fecaca',
-                        borderRadius: '8px',
-                        color: '#dc2626',
-                        fontSize: '0.875rem'
-                    } 
+        function SystemBuilder() {
+            const [role, setRole] = useState<AgentRole>("architect");
+            const [prompt, setPrompt] = useState("");
+            const [history, setHistory] = useState<
+                Array<{ role: string; content: string; type?: "text" | "logs" }>
+            >([
+                {
+                    role: "assistant",
+                    content:
+                        "Hello! I am your AI Architect. Describe the system you want to build.",
+                    type: "text",
                 },
-                    h('strong', null, 'Preview Error: '),
-                    error
+            ]);
+            const [isLoading, setIsLoading] = useState(false);
+
+            // Default project ID from URL or random
+            const [projectId, setProjectId] = useState(() => {
+                const params = new URLSearchParams(window.location.search);
+                return (
+                    params.get("projectId") ||
+                    "new-project-" + Math.random().toString(36).substring(7)
                 );
-            }
+            });
 
-            if (!Component) {
-                return h('div', { 
-                    style: { 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        height: '100%',
-                        color: '#9ca3af',
-                        fontSize: '0.875rem'
-                    } 
-                }, 'Preview will appear here...');
-            }
+            // Auto-scroll to bottom
+            const messagesEndRef = useRef<HTMLDivElement>(null);
+            useEffect(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [history]);
 
-            return h('div', { style: { height: '100%', overflow: 'auto' } },
-                h(Component, { context: mockContext })
-            );
-        }
+            const handleSend = async () => {
+                if (!prompt.trim() || isLoading) return;
 
-        function AgentChat() {
-            const [prompt, setPrompt] = useState('');
-            const [messages, setMessages] = useState<Array<{role: string, content: string}>>([]);
-            const [generatedCode, setGeneratedCode] = useState('');
-            const [isGenerating, setIsGenerating] = useState(false);
-            const [deployRoute, setDeployRoute] = useState('/my-component');
-            const [deployName, setDeployName] = useState('my-component');
-            const [deployStatus, setDeployStatus] = useState<{type: 'success'|'error', message: string} | null>(null);
-            const [activeTab, setActiveTab] = useState<'code' | 'preview'>('preview');
+                const userMsg = prompt;
+                setPrompt("");
+                setHistory((prev) => [
+                    ...prev,
+                    { role: "user", content: userMsg, type: "text" },
+                ]);
+                setIsLoading(true);
 
-            const handleGenerate = async () => {
-                if (!prompt.trim() || isGenerating) return;
-                
-                setIsGenerating(true);
-                setGeneratedCode('');
-                setMessages(prev => [...prev, { role: 'user', content: prompt }]);
-                
                 try {
-                    const response = await fetch('/api/agent/generate', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ prompt })
+                    const endpoint =
+                        role === "architect"
+                            ? "/api/agent/architect"
+                            : "/api/agent/engineer";
+                    const body =
+                        role === "architect"
+                            ? { projectId, prompt: userMsg }
+                            : { projectId, instructions: userMsg };
+
+                    const res = await fetch(endpoint, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(body),
                     });
 
-                    if (!response.ok) {
-                        throw new Error(await response.text());
-                    }
+                    const data = await res.json();
 
-                    const reader = response.body?.getReader();
-                    if (!reader) throw new Error('No response body');
-
-                    const decoder = new TextDecoder();
-                    let code = '';
-
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-                        
-                        const chunk = decoder.decode(value);
-                        code += chunk;
-                        setGeneratedCode(code);
-                    }
-
-                    setMessages(prev => [...prev, { role: 'assistant', content: 'Component generated! Check the preview.' }]);
-                    setPrompt('');
-                    
-                } catch (e) {
-                    setMessages(prev => [...prev, { 
-                        role: 'assistant', 
-                        content: `Error: ${e instanceof Error ? e.message : 'Unknown error'}` 
-                    }]);
-                } finally {
-                    setIsGenerating(false);
-                }
-            };
-
-            const handleDeploy = async () => {
-                if (!generatedCode) return;
-                
-                setDeployStatus(null);
-                
-                try {
-                    const response = await fetch('/api/agent/deploy', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            code: generatedCode,
-                            route: deployRoute,
-                            name: deployName
-                        })
-                    });
-
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                        setDeployStatus({ 
-                            type: 'success', 
-                            message: `Deployed! Preview at: ${data.previewUrl}` 
-                        });
+                    if (data.error) {
+                        setHistory((prev) => [
+                            ...prev,
+                            {
+                                role: "system",
+                                content: `Error: ${data.error}`,
+                                type: "text",
+                            },
+                        ]);
+                    } else if (role === "architect") {
+                        // Architect returns content
+                        setHistory((prev) => [
+                            ...prev,
+                            {
+                                role: "assistant",
+                                content: data.content || "Design complete.",
+                                type: "text",
+                            },
+                        ]);
                     } else {
-                        setDeployStatus({ type: 'error', message: data.error });
+                        // Engineer returns logs
+                        const logs = (data.logs || []).join("\n");
+                        setHistory((prev) => [
+                            ...prev,
+                            { role: "assistant", content: logs, type: "logs" },
+                        ]);
                     }
-                } catch (e) {
-                    setDeployStatus({ 
-                        type: 'error', 
-                        message: e instanceof Error ? e.message : 'Deploy failed' 
-                    });
+                } catch (e: any) {
+                    setHistory((prev) => [
+                        ...prev,
+                        {
+                            role: "system",
+                            content: `Network Error: ${e.message}`,
+                            type: "text",
+                        },
+                    ]);
+                } finally {
+                    setIsLoading(false);
                 }
             };
 
-            return h('div', { 
-                style: { 
-                    display: 'grid', 
-                    gridTemplateColumns: '350px 1fr', 
-                    height: '100vh',
-                    fontFamily: 'system-ui, sans-serif'
-                } 
-            },
-                // Left Panel: Chat
-                h('div', { 
-                    style: { 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        borderRight: '1px solid #e5e7eb',
-                        background: '#f9fafb'
-                    } 
+            const renderMessage = (
+                msg: { role: string; content: string; type?: "text" | "logs" },
+                index: number,
+            ) => {
+                const isUser = msg.role === "user";
+                const isLogs = msg.type === "logs";
+
+                // Use marked for markdown
+                const htmlContent = isLogs
+                    ? ""
+                    : (window as any).marked.parse(msg.content);
+
+                return h(
+                    "div",
+                    {
+                        key: index,
+                        style: {
+                            alignSelf: isUser ? "flex-end" : "flex-start",
+                            maxWidth: "85%",
+                            background: isUser
+                                ? "#4f46e5"
+                                : isLogs
+                                  ? "#1f2937"
+                                  : "white",
+                            color: isUser
+                                ? "white"
+                                : isLogs
+                                  ? "#10b981"
+                                  : "#1f2937",
+                            padding: "1rem",
+                            borderRadius: "12px",
+                            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                            marginBottom: "1rem",
+                            fontFamily: isLogs
+                                ? "monospace"
+                                : "system-ui, sans-serif",
+                            whiteSpace: isLogs ? "pre-wrap" : "normal",
+                            fontSize: isLogs ? "0.8rem" : "1rem",
+                        },
+                    },
+                    isLogs
+                        ? msg.content
+                        : h("div", {
+                              dangerouslySetInnerHTML: { __html: htmlContent },
+                          }),
+                );
+            };
+
+            return h(
+                "div",
+                {
+                    style: {
+                        display: "flex",
+                        flexDirection: "column",
+                        height: "100vh",
+                        background: "#f3f4f6",
+                    },
                 },
-                    // Header
-                    h('div', { 
-                        style: { 
-                            padding: '1rem', 
-                            borderBottom: '1px solid #e5e7eb',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            color: 'white'
-                        } 
+                // Header
+                h(
+                    "header",
+                    {
+                        style: {
+                            background: "white",
+                            padding: "1rem",
+                            borderBottom: "1px solid #e5e7eb",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                        },
                     },
-                        h('h1', { style: { margin: 0, fontSize: '1.25rem', fontWeight: '600' } }, '🤖 AI Component Builder'),
-                        h('p', { style: { margin: '0.5rem 0 0', fontSize: '0.75rem', opacity: 0.9 } }, 
-                            'Describe a component and see it live')
-                    ),
-                    
-                    // Messages
-                    h('div', { 
-                        style: { 
-                            flex: 1, 
-                            overflow: 'auto', 
-                            padding: '1rem',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.75rem'
-                        } 
-                    },
-                        messages.map((msg, i) => 
-                            h('div', { 
-                                key: i,
-                                style: { 
-                                    padding: '0.75rem 1rem',
-                                    borderRadius: '12px',
-                                    background: msg.role === 'user' ? '#4f46e5' : 'white',
-                                    color: msg.role === 'user' ? 'white' : '#1f2937',
-                                    alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                                    maxWidth: '85%',
-                                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                                    fontSize: '0.875rem'
-                                } 
-                            }, msg.content)
+                    h(
+                        "div",
+                        null,
+                        h(
+                            "h1",
+                            { style: { margin: 0, fontSize: "1.25rem" } },
+                            "AI System Builder",
                         ),
-                        isGenerating && h('div', { 
-                            style: { 
-                                padding: '0.75rem 1rem',
-                                borderRadius: '12px',
-                                background: 'white',
-                                alignSelf: 'flex-start',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                            } 
-                        }, '⏳ Generating...')
+                        h(
+                            "div",
+                            { style: { fontSize: "0.8rem", color: "#6b7280" } },
+                            `Project ID: ${projectId}`,
+                        ),
                     ),
-                    
-                    // Input
-                    h('div', { 
-                        style: { 
-                            padding: '1rem', 
-                            borderTop: '1px solid #e5e7eb',
-                            display: 'flex',
-                            gap: '0.5rem'
-                        } 
-                    },
-                        h('input', {
-                            type: 'text',
-                            value: prompt,
-                            onChange: (e: any) => setPrompt(e.target.value),
-                            onKeyDown: (e: any) => e.key === 'Enter' && handleGenerate(),
-                            placeholder: 'Describe a component...',
-                            disabled: isGenerating,
+                    h(
+                        "div",
+                        {
                             style: {
-                                flex: 1,
-                                padding: '0.75rem',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '8px',
-                                fontSize: '0.875rem'
-                            }
-                        }),
-                        h('button', {
-                            onClick: handleGenerate,
-                            disabled: isGenerating || !prompt.trim(),
-                            style: {
-                                padding: '0.75rem 1rem',
-                                background: isGenerating ? '#9ca3af' : '#4f46e5',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '8px',
-                                cursor: isGenerating ? 'not-allowed' : 'pointer',
-                                fontWeight: '500'
-                            }
-                        }, '▶')
-                    )
+                                display: "flex",
+                                gap: "0.5rem",
+                                background: "#e5e7eb",
+                                padding: "0.25rem",
+                                borderRadius: "8px",
+                            },
+                        },
+                        h(
+                            "button",
+                            {
+                                onClick: () => setRole("architect"),
+                                style: {
+                                    padding: "0.5rem 1rem",
+                                    background:
+                                        role === "architect"
+                                            ? "white"
+                                            : "transparent",
+                                    border: "none",
+                                    borderRadius: "6px",
+                                    boxShadow:
+                                        role === "architect"
+                                            ? "0 1px 2px rgba(0,0,0,0.05)"
+                                            : "none",
+                                    cursor: "pointer",
+                                    fontWeight: "500",
+                                },
+                            },
+                            "🏛️ Architect",
+                        ),
+                        h(
+                            "button",
+                            {
+                                onClick: () => setRole("engineer"),
+                                style: {
+                                    padding: "0.5rem 1rem",
+                                    background:
+                                        role === "engineer"
+                                            ? "white"
+                                            : "transparent",
+                                    border: "none",
+                                    borderRadius: "6px",
+                                    boxShadow:
+                                        role === "engineer"
+                                            ? "0 1px 2px rgba(0,0,0,0.05)"
+                                            : "none",
+                                    cursor: "pointer",
+                                    fontWeight: "500",
+                                },
+                            },
+                            "🔧 Engineer",
+                        ),
+                    ),
                 ),
 
-                // Right Panel: Preview + Code
-                h('div', { 
-                    style: { 
-                        display: 'flex', 
-                        flexDirection: 'column',
-                        background: '#fff'
-                    } 
-                },
-                    // Tabs + Deploy
-                    h('div', { 
-                        style: { 
-                            padding: '0.75rem 1rem', 
-                            borderBottom: '1px solid #e5e7eb',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            background: '#f9fafb'
-                        } 
+                // Chat Area
+                h(
+                    "div",
+                    {
+                        style: {
+                            flex: 1,
+                            overflow: "auto",
+                            padding: "2rem",
+                            display: "flex",
+                            flexDirection: "column",
+                        },
                     },
-                        // Tabs
-                        h('div', { style: { display: 'flex', gap: '0.5rem' } },
-                            h('button', {
-                                onClick: () => setActiveTab('preview'),
+                    history.map(renderMessage),
+                    isLoading &&
+                        h(
+                            "div",
+                            {
                                 style: {
-                                    padding: '0.5rem 1rem',
-                                    background: activeTab === 'preview' ? '#4f46e5' : '#e5e7eb',
-                                    color: activeTab === 'preview' ? 'white' : '#374151',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    fontWeight: '500',
-                                    fontSize: '0.875rem'
-                                }
-                            }, '👁 Preview'),
-                            h('button', {
-                                onClick: () => setActiveTab('code'),
-                                style: {
-                                    padding: '0.5rem 1rem',
-                                    background: activeTab === 'code' ? '#4f46e5' : '#e5e7eb',
-                                    color: activeTab === 'code' ? 'white' : '#374151',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    fontWeight: '500',
-                                    fontSize: '0.875rem'
-                                }
-                            }, '</> Code')
-                        ),
-                        // Deploy controls
-                        h('div', { style: { display: 'flex', gap: '0.5rem', alignItems: 'center' } },
-                            h('input', {
-                                type: 'text',
-                                value: deployName,
-                                onChange: (e: any) => setDeployName(e.target.value),
-                                placeholder: 'name',
-                                style: {
-                                    padding: '0.5rem',
-                                    border: '1px solid #d1d5db',
-                                    borderRadius: '4px',
-                                    fontSize: '0.75rem',
-                                    width: '100px'
-                                }
-                            }),
-                            h('input', {
-                                type: 'text',
-                                value: deployRoute,
-                                onChange: (e: any) => setDeployRoute(e.target.value),
-                                placeholder: '/route',
-                                style: {
-                                    padding: '0.5rem',
-                                    border: '1px solid #d1d5db',
-                                    borderRadius: '4px',
-                                    fontSize: '0.75rem',
-                                    width: '100px'
-                                }
-                            }),
-                            h('button', {
-                                onClick: handleDeploy,
-                                disabled: !generatedCode,
-                                style: {
-                                    padding: '0.5rem 1rem',
-                                    background: generatedCode ? '#10b981' : '#9ca3af',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    cursor: generatedCode ? 'pointer' : 'not-allowed',
-                                    fontSize: '0.75rem',
-                                    fontWeight: '500'
-                                }
-                            }, '🚀 Deploy')
-                        )
-                    ),
-                    
-                    // Deploy Status
-                    deployStatus && h('div', { 
-                        style: { 
-                            padding: '0.75rem 1rem',
-                            background: deployStatus.type === 'success' ? '#d1fae5' : '#fee2e2',
-                            color: deployStatus.type === 'success' ? '#065f46' : '#991b1b',
-                            fontSize: '0.875rem'
-                        } 
-                    }, deployStatus.message),
-                    
-                    // Content Area
-                    h('div', { style: { flex: 1, overflow: 'hidden' } },
-                        activeTab === 'preview' ? (
-                            h('div', { 
-                                style: { 
-                                    height: '100%', 
-                                    padding: '1rem',
-                                    overflow: 'auto',
-                                    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)'
-                                } 
+                                    alignSelf: "flex-start",
+                                    padding: "1rem",
+                                    background: "white",
+                                    borderRadius: "12px",
+                                },
                             },
-                                h(LivePreview, { code: generatedCode })
-                            )
-                        ) : (
-                            h('pre', {
-                                style: {
-                                    height: '100%',
-                                    margin: 0,
-                                    padding: '1rem',
-                                    overflow: 'auto',
-                                    background: '#1e1e1e',
-                                    color: '#d4d4d4',
-                                    fontSize: '0.75rem',
-                                    lineHeight: 1.6,
-                                    fontFamily: 'Monaco, Consolas, monospace'
-                                }
-                            }, generatedCode || '// Your generated component will appear here...')
-                        )
-                    )
-                )
+                            "Thinking...",
+                        ),
+                    h("div", { ref: messagesEndRef }),
+                ),
+
+                // Input Area
+                h(
+                    "div",
+                    {
+                        style: {
+                            background: "white",
+                            padding: "1rem",
+                            borderTop: "1px solid #e5e7eb",
+                            display: "flex",
+                            gap: "1rem",
+                        },
+                    },
+                    h("textarea", {
+                        value: prompt,
+                        onChange: (e: any) => setPrompt(e.target.value),
+                        onKeyDown: (e: any) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSend();
+                            }
+                        },
+                        placeholder:
+                            role === "architect"
+                                ? "Describe your system requirements..."
+                                : "Approve the plan and ask to build it...",
+                        style: {
+                            flex: 1,
+                            padding: "1rem",
+                            borderRadius: "8px",
+                            border: "1px solid #d1d5db",
+                            resize: "none",
+                            height: "80px",
+                            fontFamily: "inherit",
+                        },
+                    }),
+                    h(
+                        "button",
+                        {
+                            onClick: handleSend,
+                            disabled: isLoading || !prompt.trim(),
+                            style: {
+                                padding: "0 2rem",
+                                background: "#4f46e5",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "8px",
+                                fontWeight: "600",
+                                cursor: isLoading ? "not-allowed" : "pointer",
+                                opacity: isLoading ? 0.7 : 1,
+                            },
+                        },
+                        "Send",
+                    ),
+                ),
             );
         }
 
-        // Mount the app
-        const root = createRoot(document.getElementById('app')!);
-        root.render(h(AgentChat, null));
+        const root = createRoot(document.getElementById("app")!);
+        root.render(h(SystemBuilder, null));
     </script>
 </Layout>
 
 <style>
-    main {
-        height: 100vh;
-        overflow: hidden;
-    }
     body {
         margin: 0;
-        padding: 0;
+        font-family:
+            system-ui,
+            -apple-system,
+            sans-serif;
     }
 </style>

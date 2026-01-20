@@ -1,53 +1,62 @@
 ---
 /**
  * Catch-All Dynamic Route
- * 
+ *
  * This page handles ALL routes not matched by static pages.
  * It queries the Route Registry to determine which MFE to load.
  */
 export const prerender = false;
 
-import Layout from '../../layouts/Layout.astro';
-import { RemoteRenderer } from '../../sdui/RemoteRenderer';
+import Layout from "../../layouts/Layout.astro";
+import { RemoteRenderer } from "../../components/system/RemoteRenderer";
 
 // Get the path from the URL
-const path = '/' + (Astro.params.slug || '');
+const path = "/" + (Astro.params.slug || "");
 
 // Fetch the MFE spec from the Route Registry
 let mfeSpec = null;
 let routeError = null;
 
 try {
-    const apiUrl = new URL('/api/routes', Astro.url);
-    apiUrl.searchParams.set('path', path);
-    
+    const apiUrl = new URL("/api/routes", Astro.url);
+    apiUrl.searchParams.set("path", path);
+
     const res = await fetch(apiUrl.toString());
     if (res.ok) {
         const data = await res.json();
         mfeSpec = data.mfe;
     } else {
-        routeError = 'Route not found';
+        routeError = "Route not found";
     }
 } catch (e) {
-    routeError = 'Failed to resolve route';
+    routeError = "Failed to resolve route";
 }
 ---
 
 <Layout title="Dynamic Page">
     <main class="min-h-screen">
-        {mfeSpec ? (
-            <RemoteRenderer mfeSpec={mfeSpec} client:only="react" />
-        ) : (
-            <div class="flex items-center justify-center min-h-screen">
-                <div class="text-center p-8">
-                    <h1 class="text-4xl font-bold text-gray-900 mb-4">404</h1>
-                    <p class="text-gray-600 mb-4">{routeError || 'Page not found'}</p>
-                    <p class="text-sm text-gray-400 font-mono">{path}</p>
-                    <a href="/" class="mt-6 inline-block px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500">
-                        Go Home
-                    </a>
+        {
+            mfeSpec ? (
+                <RemoteRenderer mfeSpec={mfeSpec} client:only="react" />
+            ) : (
+                <div class="flex items-center justify-center min-h-screen">
+                    <div class="text-center p-8">
+                        <h1 class="text-4xl font-bold text-gray-900 mb-4">
+                            404
+                        </h1>
+                        <p class="text-gray-600 mb-4">
+                            {routeError || "Page not found"}
+                        </p>
+                        <p class="text-sm text-gray-400 font-mono">{path}</p>
+                        <a
+                            href="/"
+                            class="mt-6 inline-block px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500"
+                        >
+                            Go Home
+                        </a>
+                    </div>
                 </div>
-            </div>
-        )}
+            )
+        }
     </main>
 </Layout>

@@ -19,6 +19,62 @@ export interface ToolResult {
 
 export const AITools = {
     /**
+     * Reads the current project context (files, structure)
+     */
+    readProjectContext: async (projectId: string): Promise<ToolResult> => {
+        try {
+            // Get file list
+            const files = await FileSystem.listFiles(projectId);
+
+            // Read key config files if they exist
+            let packageJson = '';
+            try {
+                packageJson = await FileSystem.readFile(projectId, 'package.json');
+            } catch (e) { }
+
+            return {
+                success: true,
+                data: {
+                    files,
+                    packageJson: packageJson ? JSON.parse(packageJson) : null,
+                    structure: "Standard MFE + Microservices structure"
+                }
+            };
+        } catch (e: any) {
+            return { success: false, error: e.message };
+        }
+    },
+
+    /**
+     * Defines a route connecting a path to an MFE
+     */
+    defineRoute: async (projectId: string, path: string, mfeName: string): Promise<ToolResult> => {
+        try {
+            // For now, we'll store routes in a simple JSON file or DB
+            // Assuming PlatformDB has a way to store routes or we use a `routes.json` file
+            const routesFile = 'routes.json';
+            let routes: Record<string, any> = {};
+
+            try {
+                const content = await FileSystem.readFile(projectId, routesFile);
+                routes = JSON.parse(content);
+            } catch (e) {
+                // File doesn't exist yet, start empty
+            }
+
+            routes[path] = {
+                mfe: mfeName,
+                updatedAt: new Date().toISOString()
+            };
+
+            await FileSystem.writeFile(projectId, routesFile, JSON.stringify(routes, null, 2));
+            return { success: true, data: { message: `Route ${path} -> ${mfeName} defined` } };
+        } catch (e: any) {
+            return { success: false, error: e.message };
+        }
+    },
+
+    /**
      * Updates the database schema for the project
      */
     updateDatabaseSchema: async (projectId: string, schema: any): Promise<ToolResult> => {
@@ -95,22 +151,6 @@ export const AITools = {
             } catch (buildError: any) {
                 return { success: true, data: { message: `Component ${name} created but build/registration failed: ${buildError.message}` } };
             }
-        } catch (e: any) {
-            return { success: false, error: e.message };
-        }
-    },
-
-    /**
-     * Updates the UI Layout (SDUI)
-     */
-    updateUILayout: async (projectId: string, layout: any): Promise<ToolResult> => {
-        try {
-            const currentBp = PlatformDB.getActiveBlueprint(projectId);
-            // Default to empty tables if no blueprint exists yet
-            const dataSchema = currentBp ? JSON.parse(currentBp.data_schema) : { tables: [] };
-
-            PlatformDB.saveBlueprint(projectId, layout, dataSchema);
-            return { success: true, data: { message: 'UI Layout updated' } };
         } catch (e: any) {
             return { success: false, error: e.message };
         }

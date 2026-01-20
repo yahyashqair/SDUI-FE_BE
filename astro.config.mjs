@@ -18,6 +18,7 @@ export default defineConfig({
   integrations: [mdx(), react(), sitemap()],
 
   vite: {
+    plugins: [tailwindcss()],
     ssr: {
       external: ['better-sqlite3', 'uuid']
     },

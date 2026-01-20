@@ -1,17 +1,17 @@
 ---
-import Layout from '../../layouts/Layout.astro';
-import { PlatformDB } from '../../db/platform';
+import Layout from "../../layouts/Layout.astro";
+import { PlatformDB } from "../../db/platform";
 
 const projects = PlatformDB.getAllProjects();
 
-if (Astro.request.method === 'POST') {
+if (Astro.request.method === "POST") {
   const formData = await Astro.request.formData();
-  const name = formData.get('name') as string;
-  const subdomain = formData.get('subdomain') as string;
+  const name = formData.get("name") as string;
+  const subdomain = formData.get("subdomain") as string;
 
   if (name && subdomain) {
     PlatformDB.createProject(name, subdomain);
-    return Astro.redirect('/builder');
+    return Astro.redirect("/builder");
   }
 }
 ---
@@ -39,28 +39,38 @@ if (Astro.request.method === 'POST') {
           class="flex-1 p-2 border rounded"
           required
         />
-        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+        <button
+          type="submit"
+          class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+        >
           Create
         </button>
       </form>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {projects.map((project) => (
-        <a href={`/builder/${project.id}`} class="block bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
-          <h3 class="text-xl font-bold mb-2">{project.name}</h3>
-          <p class="text-gray-600 mb-4">{project.subdomain}.platform.com</p>
-          <div class="text-sm text-gray-500">
-            Created: {new Date(project.created_at).toLocaleDateString()}
-          </div>
-        </a>
-      ))}
+      {
+        projects.map((project) => (
+          <a
+            href={`/app/builder?projectId=${project.id}`}
+            class="block bg-white p-6 rounded-lg shadow hover:shadow-lg transition"
+          >
+            <h3 class="text-xl font-bold mb-2">{project.name}</h3>
+            <p class="text-gray-600 mb-4">{project.subdomain}.platform.com</p>
+            <div class="text-sm text-gray-500">
+              Created: {new Date(project.created_at).toLocaleDateString()}
+            </div>
+          </a>
+        ))
+      }
 
-      {projects.length === 0 && (
-        <div class="col-span-3 text-center py-12 text-gray-500">
-          No projects yet. Create one above!
-        </div>
-      )}
+      {
+        projects.length === 0 && (
+          <div class="col-span-3 text-center py-12 text-gray-500">
+            No projects yet. Create one above!
+          </div>
+        )
+      }
     </div>
   </div>
 </Layout>

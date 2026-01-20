@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { DynamicSDUIRenderer } from '../../sdui/DynamicRenderer';
-import { SNIPPETS } from './snippets';
+// import { DynamicSDUIRenderer } from '../../sdui/DynamicRenderer'; // Deleted
+
+// import { SNIPPETS } from './snippets'; // Deleted
+const SNIPPETS = {};
+
 
 interface LiveEditorProps {
     initialEndpoint: string;
@@ -189,10 +192,14 @@ export function LiveEditor({ initialEndpoint }: LiveEditorProps) {
                     <div className="flex-1 overflow-y-auto bg-gray-50/50 relative scrollbar-thin scrollbar-thumb-gray-200">
                         <div className="absolute inset-0 p-8 min-h-max pb-20">
                             <div className="bg-white shadow-sm ring-1 ring-gray-200 rounded-xl min-h-[calc(100vh-12rem)] overflow-hidden transform transition-all duration-300 ease-out origin-top hover:ring-gray-300">
-                                <DynamicSDUIRenderer
+                                {/* <DynamicSDUIRenderer 
                                     key={refreshTrigger}
                                     endpoint={initialEndpoint}
-                                />
+                                /> */}
+                                <div className="flex items-center justify-center h-full text-gray-400">
+                                    Preview functionality temporarily disabled during refactor
+                                </div>
+
                             </div>
                         </div>
                     </div>
