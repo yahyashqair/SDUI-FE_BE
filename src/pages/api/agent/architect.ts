@@ -4,13 +4,15 @@ import { ArchitectAgent } from '../../../ai/agent';
 
 export const POST: APIRoute = async ({ request }) => {
     try {
-        const { projectId, prompt } = await request.json();
+        const { projectId, prompt, messages } = await request.json();
 
-        if (!projectId || !prompt) {
-            return new Response(JSON.stringify({ error: 'projectId and prompt are required' }), { status: 400 });
+        if (!projectId || (!prompt && !messages)) {
+            return new Response(JSON.stringify({ error: 'projectId and prompt/messages are required' }), { status: 400 });
         }
 
-        const result = await ArchitectAgent.process(projectId, prompt);
+        // Prefer messages history, fallback to single prompt
+        const input = messages || prompt;
+        const result = await ArchitectAgent.process(projectId, input);
         return new Response(JSON.stringify(result));
     } catch (e: any) {
         return new Response(JSON.stringify({ error: e.message }), { status: 500 });

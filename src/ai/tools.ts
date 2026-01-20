@@ -154,5 +154,119 @@ export const AITools = {
         } catch (e: any) {
             return { success: false, error: e.message };
         }
+    },
+
+    /**
+     * Writes a design document (ADR, Diagram, README) to the design/ folder
+     */
+    writeDesignDocument: async (projectId: string, path: string, content: string): Promise<ToolResult> => {
+        try {
+            // Ensure path starts with design/
+            const fullPath = path.startsWith('design/') ? path : `design/${path}`;
+            await FileSystem.writeFile(projectId, fullPath, content);
+            return { success: true, data: { message: `Design document written to ${fullPath}` } };
+        } catch (e: any) {
+            return { success: false, error: e.message };
+        }
+    },
+
+    /**
+     * Search for files matching a pattern or content
+     */
+    searchFiles: async (projectId: string, query: string, path: string = '.'): Promise<ToolResult> => {
+        try {
+            const allFiles = await FileSystem.listFiles(projectId, path);
+            const matches = [];
+
+            for (const f of allFiles) {
+                if (f.type === 'directory') continue;
+
+                // Match filename
+                if (f.path.includes(query)) {
+                    matches.push(f.path);
+                    continue;
+                }
+
+                // Match content (simple grep)
+                try {
+                    const content = FileSystem.readFile(projectId, f.path);
+                    if (content.includes(query)) {
+                        matches.push(f.path);
+                    }
+                } catch (e) { }
+            }
+
+            return { success: true, data: { files: matches } };
+        } catch (e: any) {
+            return { success: false, error: e.message };
+        }
+    },
+
+    /**
+     * Read file content
+     */
+    readFile: async (projectId: string, path: string): Promise<ToolResult> => {
+        try {
+            const content = await FileSystem.readFile(projectId, path);
+            return { success: true, data: { content } };
+        } catch (e: any) {
+            return { success: false, error: e.message };
+        }
+    },
+
+    /**
+     * Edit file content (Simplified overwrite for now, would be line-based in future)
+     */
+    editFile: async (projectId: string, path: string, content: string): Promise<ToolResult> => {
+        try {
+            await FileSystem.writeFile(projectId, path, content);
+            return { success: true, data: { message: `File ${path} updated` } };
+        } catch (e: any) {
+            return { success: false, error: e.message };
+        }
+    },
+
+    /**
+     * Run a shell command (SAFE MODE)
+     */
+    runCommand: async (projectId: string, command: string): Promise<ToolResult> => {
+        // ALLOW-LIST ONLY
+        const ALLOWED_COMMANDS = ['npm run build', 'npm test', 'npx tsc', 'git status', 'ls'];
+        const isAllowed = ALLOWED_COMMANDS.some(cmd => command.startsWith(cmd));
+
+        if (!isAllowed) {
+            return { success: false, error: `Command not allowed: ${command}` };
+        }
+
+        // Mock execution
+        return { success: true, data: { output: `Mock output for: ${command}` } };
+    },
+
+    gitInit: async (projectId: string): Promise<ToolResult> => {
+        try {
+            // Note: In a real implementation this would exec git init
+            // For now, we mock or use the existing safe runner if extended
+            return { success: true, data: { message: "Git initialized (mock)" } };
+        } catch (e: any) {
+            return { success: false, error: e.message };
+        }
+    },
+
+    gitCheckout: async (projectId: string, branch: string, create: boolean): Promise<ToolResult> => {
+        try {
+            // Mock branching
+            return { success: true, data: { message: `Checked out ${branch}` } };
+        } catch (e: any) {
+            return { success: false, error: e.message };
+        }
+    },
+
+    gitCommit: async (projectId: string, message: string): Promise<ToolResult> => {
+        try {
+            // Mock commit
+            return { success: true, data: { message: `Committed: ${message}` } };
+        } catch (e: any) {
+            return { success: false, error: e.message };
+        }
     }
 };

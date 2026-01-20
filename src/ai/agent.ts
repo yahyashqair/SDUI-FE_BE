@@ -119,14 +119,91 @@ const FRONTEND_TOOL = {
     }
 };
 
+const WRITE_DESIGN_TOOL = {
+    type: 'function',
+    function: {
+        name: 'writeDesignDocument',
+        description: 'Writes a design document (ADR, Diagram, README) to the design/ folder.',
+        parameters: {
+            type: 'object',
+            properties: {
+                path: { type: 'string', description: 'Relative path in design/ folder (e.g., adr/001-init.md)' },
+                content: { type: 'string', description: 'Markdown content' }
+            },
+            required: ['path', 'content']
+        }
+    }
+};
+
+
+const GENERIC_TOOLS = [
+    {
+        type: 'function',
+        function: {
+            name: 'searchFiles',
+            description: 'Search for files matching a pattern or content',
+            parameters: { type: 'object', properties: { query: { type: 'string' }, path: { type: 'string' } }, required: ['query'] }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'readFile',
+            description: 'Read file content',
+            parameters: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'editFile',
+            description: 'Edit file content',
+            parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'runCommand',
+            description: 'Run a shell command (SAFE MODE)',
+            parameters: { type: 'object', properties: { command: { type: 'string' } }, required: ['command'] }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'gitInit',
+            description: 'Initialize a git repository',
+            parameters: { type: 'object', properties: {}, required: [] }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'gitCheckout',
+            description: 'Checkout a branch (creates if new)',
+            parameters: { type: 'object', properties: { branch: { type: 'string' }, create: { type: 'boolean' } }, required: ['branch'] }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'gitCommit',
+            description: 'Commit changes',
+            parameters: { type: 'object', properties: { message: { type: 'string' } }, required: ['message'] }
+        }
+    }
+];
+
 // specialized toolsets
-const ARCHITECT_TOOLS = [READ_CONTEXT_TOOL];
+const ARCHITECT_TOOLS = [READ_CONTEXT_TOOL, WRITE_DESIGN_TOOL, ...GENERIC_TOOLS];
 const ENGINEER_TOOLS = [
     READ_CONTEXT_TOOL,
     DEFINE_ROUTE_TOOL,
     DB_TOOL,
     BACKEND_TOOL,
-    FRONTEND_TOOL
+    FRONTEND_TOOL,
+    ...GENERIC_TOOLS
 ];
 
 // ------------------------------------------------------------------
@@ -191,26 +268,34 @@ async function callAI(history: any[], tools: any[], systemPrompt: string): Promi
 // ------------------------------------------------------------------
 
 export const ArchitectAgent = {
-    process: async (projectId: string, prompt: string) => {
+    process: async (projectId: string, input: string | any[]) => {
         const systemPrompt = ARCHITECT_PROMPT;
 
-        const history = [{ role: 'user', content: prompt }];
-        // Only read context allowed for Architect
+        // Handle both single prompt string and full history array
+        const history = Array.isArray(input) ? input : [{ role: 'user', content: input }];
+
         return await callAI(history, ARCHITECT_TOOLS, systemPrompt);
     }
 };
 
 export const EngineerAgent = {
-    process: async (projectId: string, instructions: string) => {
+    process: async (projectId: string, input: string | any[]) => {
+        // SANDBOX: Ensure we are in a unique branch to avoid breaking main
+        const timestamp = new Date().getTime();
+        const branchName = `ai-run-${timestamp}`;
+        await AITools.gitInit(projectId);
+        await AITools.gitCheckout(projectId, branchName, true);
+
         await FileSystem.initProject(projectId);
 
-        const systemPrompt = `You are a Senior Software Engineer.
-Your goal is to IMPLEMENT the architecture designed by the Architect.
-You have access to tools to create DB schemas, backend functions, and frontend components.
-Follow the instructions precisely.`;
+        const systemPrompt = ENGINEER_PROMPT; // Use strict prompt
 
         const logs: string[] = [];
-        let history: any[] = [{ role: 'user', content: instructions }];
+        logs.push(`🛡️ Sandbox Mode: Created branch ${branchName}`);
+
+        // Initialize history from input (array or single string)
+        let history: any[] = Array.isArray(input) ? input : [{ role: 'user', content: input }];
+
         let attempts = 0;
         const MAX_ATTEMPTS = 5;
 
@@ -259,6 +344,30 @@ Follow the instructions precisely.`;
                             break;
                         case 'createFrontendComponent':
                             result = await AITools.createFrontendComponent(projectId, args.name, args.code);
+                            break;
+                        case 'writeDesignDocument':
+                            result = await AITools.writeDesignDocument(projectId, args.path, args.content);
+                            break;
+                        case 'searchFiles':
+                            result = await AITools.searchFiles(projectId, args.query, args.path);
+                            break;
+                        case 'readFile':
+                            result = await AITools.readFile(projectId, args.path);
+                            break;
+                        case 'editFile':
+                            result = await AITools.editFile(projectId, args.path, args.content);
+                            break;
+                        case 'runCommand':
+                            result = await AITools.runCommand(projectId, args.command);
+                            break;
+                        case 'gitInit':
+                            result = await AITools.gitInit(projectId);
+                            break;
+                        case 'gitCheckout':
+                            result = await AITools.gitCheckout(projectId, args.branch, args.create);
+                            break;
+                        case 'gitCommit':
+                            result = await AITools.gitCommit(projectId, args.message);
                             break;
                         default:
                             result = { success: false, error: `Unknown tool: ${fnName}` };

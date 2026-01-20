@@ -75,24 +75,35 @@ module.exports = {
     return srcDir;
   },
 
-  listFiles: (projectId: string, dir: string = '') => {
-    // Validation handled by returning paths relative to safe dir
+  listFiles: (projectId: string, dir: string = ''): Array<{ name: string, type: 'directory' | 'file', path: string }> => {
     const projectSrc = path.join(TENANTS_DIR, projectId, 'src');
     const targetDir = path.join(projectSrc, dir);
 
-    // Initial basic check
     if (!path.resolve(targetDir).startsWith(projectSrc)) {
       throw new Error('Access denied: Path traversal attempt');
     }
 
     if (!fs.existsSync(targetDir)) return [];
 
-    const files = fs.readdirSync(targetDir, { withFileTypes: true });
-    return files.map(f => ({
-      name: f.name,
-      type: f.isDirectory() ? 'directory' : 'file',
-      path: path.join(dir, f.name)
-    }));
+    const results: Array<{ name: string, type: 'directory' | 'file', path: string }> = [];
+
+    function walk(currentDir: string, relativePath: string) {
+      const files = fs.readdirSync(currentDir, { withFileTypes: true });
+      for (const f of files) {
+        const relPath = path.join(relativePath, f.name);
+        results.push({
+          name: f.name,
+          type: f.isDirectory() ? 'directory' : 'file',
+          path: relPath
+        });
+        if (f.isDirectory()) {
+          walk(path.join(currentDir, f.name), relPath);
+        }
+      }
+    }
+
+    walk(targetDir, dir);
+    return results;
   },
 
   readFile: (projectId: string, filePath: string) => {

@@ -70,10 +70,24 @@ import Layout from "../../layouts/Layout.astro";
                         role === "architect"
                             ? "/api/agent/architect"
                             : "/api/agent/engineer";
-                    const body =
-                        role === "architect"
-                            ? { projectId, prompt: userMsg }
-                            : { projectId, instructions: userMsg };
+
+                    // Filter history to send only relevant messages
+                    const conversationHistory = history
+                        .map((h) => ({
+                            role: h.role === "assistant" ? "assistant" : "user",
+                            content: h.content,
+                        }))
+                        .filter(
+                            (h) => h.role === "user" || h.role === "assistant",
+                        );
+
+                    // Add the new user message
+                    const messages = [
+                        ...conversationHistory,
+                        { role: "user", content: userMsg },
+                    ];
+
+                    const body = { projectId, messages };
 
                     const res = await fetch(endpoint, {
                         method: "POST",
@@ -109,6 +123,18 @@ import Layout from "../../layouts/Layout.astro";
                             ...prev,
                             { role: "assistant", content: logs, type: "logs" },
                         ]);
+
+                        // If Engineer produced a final message content, show it too
+                        if (data.content) {
+                            setHistory((prev) => [
+                                ...prev,
+                                {
+                                    role: "assistant",
+                                    content: data.content,
+                                    type: "text",
+                                },
+                            ]);
+                        }
                     }
                 } catch (e: any) {
                     setHistory((prev) => [
