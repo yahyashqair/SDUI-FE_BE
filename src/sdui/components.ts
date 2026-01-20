@@ -26,12 +26,17 @@ const Divider = lazy(() => load(import('../components/react/Divider'), 'Divider'
 const Spacer = lazy(() => load(import('../components/react/Spacer'), 'Spacer'));
 const ThemeSwitcher = lazy(() => load(import('./theme/ThemeSwitcher'), 'ThemeSwitcher'));
 const Tabs = lazy(() => load(import('../components/react/Tabs'), 'Tabs'));
+const RemoteWrapper = lazy(() => load(import('../components/react/RemoteWrapper'), 'RemoteWrapper'));
 
 /**
  * Register all built-in SDUI components
  */
 export function registerSDUIComponents(): void {
   registerComponents([
+    {
+      name: 'remote-mfe',
+      component: RemoteWrapper,
+    },
     {
       name: 'Button',
       component: Button,

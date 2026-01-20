@@ -1,29 +1,18 @@
-import React, { useEffect, useRef, useState, createContext, useContext } from 'react';
-import { MFERuntime, type MFEModule, type MFERuntimeContext } from './MFERuntime';
+import React, { useEffect, useRef, useState } from 'react';
+import { MFERuntime, type MFERuntimeContext, type MFEModule } from './MFERuntime';
+import { errorReporter } from './ErrorReporter';
 import { globalEventBus } from './EventBus';
 import { dependencies } from './dependencies';
-import { errorReporter } from './ErrorReporter';
 
 /**
  * MFE Spec returned from the Route Registry
  */
 export interface MFESpec {
-    name: string; // The unique identifier for this MFE
+    name: string;
     source: string;
     integrity?: string;
     variables?: Record<string, any>;
     version?: string;
-}
-
-/**
- * Context provided to every MFE
- */
-export interface MFEContext {
-    variables: Record<string, any>;
-    globalState: Record<string, any>;
-    setGlobalState: (key: string, value: any) => void;
-    navigate: (path: string) => void;
-    callAPI: (url: string, opts?: RequestInit) => Promise<any>;
 }
 
 /**
@@ -64,26 +53,7 @@ class ErrorBoundary extends React.Component<
 }
 
 /**
- * Skeleton loader while MFE is loading
- */
-function PageSkeleton() {
-    return (
-        <div className="animate-pulse p-8 space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-            <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-            <div className="grid grid-cols-3 gap-4 mt-8">
-                <div className="h-32 bg-gray-200 rounded"></div>
-                <div className="h-32 bg-gray-200 rounded"></div>
-                <div className="h-32 bg-gray-200 rounded"></div>
-            </div>
-        </div>
-    );
-}
-
-/**
  * RemoteRenderer - The core component that loads and renders MFEs
- * Uses MFERuntime to load and mount the MFE into a container.
  */
 export function RemoteRenderer({ mfeSpec }: { mfeSpec: MFESpec }) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -101,47 +71,20 @@ export function RemoteRenderer({ mfeSpec }: { mfeSpec: MFESpec }) {
             setError(null);
 
             try {
-                // Load the MFE module
                 const module = await MFERuntime.load(mfeSpec.source, mfeSpec.integrity);
 
                 if (!mounted) return;
 
-                // Prepare context
                 const context: Omit<MFERuntimeContext, 'container'> = {
                     deps: dependencies,
                     eventBus: globalEventBus.scoped(mfeSpec.name),
                     config: mfeSpec.variables || {}
                 };
 
-                // Mount the MFE
-                // We use a Shadow DOM for isolation
-                if (!containerRef.current.shadowRoot) {
-                    containerRef.current.attachShadow({ mode: 'open' });
-                }
-                const shadowRoot = containerRef.current.shadowRoot!;
-
                 // Clear previous content
-                shadowRoot.innerHTML = '';
+                containerRef.current.innerHTML = '';
 
-                // Inject Styles from Host
-                // Optimized to only clone relevant styles (Tailwind, utilities)
-                Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).forEach(styleNode => {
-                    const isTailwind = styleNode.textContent?.includes('--tw-') ||
-                        (styleNode instanceof HTMLLinkElement && styleNode.href.includes('tailwind'));
-                    const isShared = styleNode.hasAttribute('data-mfe-shared');
-
-                    if (isTailwind || isShared) {
-                        shadowRoot.appendChild(styleNode.cloneNode(true));
-                    }
-                });
-
-                // Create a mount point inside Shadow DOM
-                const mountPoint = document.createElement('div');
-                mountPoint.id = 'mfe-root';
-                mountPoint.style.height = '100%';
-                shadowRoot.appendChild(mountPoint);
-
-                cleanup = MFERuntime.mount(module, mountPoint, context);
+                cleanup = MFERuntime.mount(module, containerRef.current, context);
 
             } catch (err: any) {
                 if (mounted) {
@@ -161,7 +104,7 @@ export function RemoteRenderer({ mfeSpec }: { mfeSpec: MFESpec }) {
                 cleanup();
             }
         };
-    }, [mfeSpec]); // Re-mount if spec changes
+    }, [mfeSpec]);
 
     if (error) {
         return (
@@ -175,40 +118,7 @@ export function RemoteRenderer({ mfeSpec }: { mfeSpec: MFESpec }) {
 
     return (
         <ErrorBoundary mfeName={mfeSpec.name}>
-            <div className="mfe-container relative min-h-[200px]">
-                {loading && <PageSkeleton />}
-                <div ref={containerRef} className={loading ? 'hidden' : 'block'} />
-            </div>
+             <div ref={containerRef} className="mfe-container" />
         </ErrorBoundary>
     );
 }
-
-/**
- * Hook to fetch route and render the appropriate MFE
- */
-export function useDynamicRoute(path: string) {
-    const [mfeSpec, setMfeSpec] = useState<MFESpec | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        setLoading(true);
-        fetch(`/api/routes?path=${encodeURIComponent(path)}`)
-            .then(res => {
-                if (!res.ok) throw new Error('Route not found');
-                return res.json();
-            })
-            .then(data => {
-                setMfeSpec(data.mfe);
-                setError(null);
-            })
-            .catch(err => {
-                setError(err.message);
-                setMfeSpec(null);
-            })
-            .finally(() => setLoading(false));
-    }, [path]);
-
-    return { mfeSpec, loading, error };
-}
-

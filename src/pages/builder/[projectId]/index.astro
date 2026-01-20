@@ -1,15 +1,21 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 import { PlatformDB } from '../../../db/platform';
+import { FileSystem } from '../../../db/fs';
 import { generateApp } from '../../../lib/ai/agent';
 import { initTenantDB } from '../../../db/tenant';
 
 const { projectId } = Astro.params;
 const project = PlatformDB.getProject(projectId as string);
 const blueprint = PlatformDB.getActiveBlueprint(projectId as string);
-const functions = PlatformDB.getFunctions(projectId as string);
 
 if (!project) return Astro.redirect('/builder');
+
+// Init FileSystem if needed
+await FileSystem.initProject(project.id);
+
+let currentFile = null;
+let currentFileContent = '';
 
 // Handle Actions
 if (Astro.request.method === 'POST') {
@@ -22,14 +28,18 @@ if (Astro.request.method === 'POST') {
 
     // Save generated artifacts
     PlatformDB.saveBlueprint(project.id, generated.uiSchema, generated.dataSchema);
-
-    // Init DB
     initTenantDB(project.id, generated.dataSchema);
 
-    // Save functions
+    // Save functions to FileSystem
     for (const fn of generated.functions) {
-      PlatformDB.saveFunction(project.id, fn.name, fn.code);
+      const fileName = `${fn.name}.js`;
+      await FileSystem.writeFile(project.id, fileName, fn.code);
+      // Register mapping
+      PlatformDB.saveFunction(project.id, fn.name, fileName);
     }
+
+    await FileSystem.commit(project.id, `AI Generated: ${prompt}`);
+
   } else if (action === 'save_ui') {
       const uiJson = formData.get('ui_schema') as string;
       const currentBp = PlatformDB.getActiveBlueprint(project.id);
@@ -37,18 +47,45 @@ if (Astro.request.method === 'POST') {
       try {
           const parsedUI = JSON.parse(uiJson);
           PlatformDB.saveBlueprint(project.id, parsedUI, dataSchema);
-      } catch(e) {
-          // console.error(e);
+      } catch(e) {}
+
+  } else if (action === 'save_file') {
+      const fileName = formData.get('filename') as string;
+      const content = formData.get('content') as string;
+      await FileSystem.writeFile(project.id, fileName, content);
+
+      // If it's a top level JS file, maybe register it as a function automatically?
+      // For now, let's assume manual registration or existing registration.
+      // Or we can register it if it matches a convention.
+      if (fileName.endsWith('.js')) {
+          const name = fileName.replace('.js', '');
+          PlatformDB.saveFunction(project.id, name, fileName);
       }
-  } else if (action === 'save_function') {
-      const name = formData.get('name') as string;
-      const code = formData.get('code') as string;
-      PlatformDB.saveFunction(project.id, name, code);
+
+  } else if (action === 'create_file') {
+      const fileName = formData.get('new_filename') as string;
+      await FileSystem.writeFile(project.id, fileName, '// New file');
+
+  } else if (action === 'commit') {
+      const msg = formData.get('message') as string;
+      await FileSystem.commit(project.id, msg);
+  } else if (action === 'open_file') {
+      currentFile = formData.get('filename') as string;
+      try {
+        currentFileContent = FileSystem.readFile(project.id, currentFile);
+      } catch (e) {
+        currentFile = null;
+      }
   }
 
-  return Astro.redirect(`/builder/${projectId}`);
+  // Reload current file content if we just saved it
+  if (action === 'save_file' && formData.get('filename')) {
+      currentFile = formData.get('filename') as string;
+      currentFileContent = FileSystem.readFile(project.id, currentFile);
+  }
 }
 
+const files = FileSystem.listFiles(project.id);
 const uiSchemaStr = blueprint ? JSON.stringify(JSON.parse(blueprint.ui_schema), null, 2) : '{}';
 ---
 
@@ -62,17 +99,36 @@ const uiSchemaStr = blueprint ? JSON.stringify(JSON.parse(blueprint.ui_schema), 
       </div>
 
       <div class="p-4 flex-1 overflow-y-auto">
-        <h2 class="text-xs font-semibold uppercase text-gray-500 mb-2">Functions</h2>
+        <div class="flex justify-between items-center mb-2">
+            <h2 class="text-xs font-semibold uppercase text-gray-500">Files</h2>
+            <form method="POST" class="inline">
+                <input type="hidden" name="action" value="create_file" />
+                <input type="text" name="new_filename" placeholder="+ New File" class="w-20 text-xs bg-gray-800 border-none rounded px-1 text-white placeholder-gray-500 focus:w-32 transition-all" />
+            </form>
+        </div>
         <ul class="space-y-1">
-          {functions.map(fn => (
-            <li class="text-sm p-2 hover:bg-gray-800 rounded cursor-pointer">
-              {fn.name}
+          {files.map(f => (
+            <li class="text-sm">
+                <form method="POST">
+                    <input type="hidden" name="action" value="open_file" />
+                    <input type="hidden" name="filename" value={f.path} />
+                    <button class={`w-full text-left p-2 rounded hover:bg-gray-800 ${currentFile === f.path ? 'bg-gray-700' : ''}`}>
+                        {f.type === 'directory' ? '📁' : '📄'} {f.name}
+                    </button>
+                </form>
             </li>
           ))}
         </ul>
       </div>
 
       <div class="p-4 border-t border-gray-700">
+          <form method="POST" class="mb-2">
+              <input type="hidden" name="action" value="commit" />
+              <div class="flex gap-1">
+                  <input type="text" name="message" placeholder="Commit msg" class="flex-1 bg-gray-800 border-none rounded text-xs px-2 py-1 text-white" required />
+                  <button class="bg-blue-600 text-xs px-2 py-1 rounded">Commit</button>
+              </div>
+          </form>
           <a href={`/app/${project.id}/`} target="_blank" class="block w-full text-center bg-green-600 hover:bg-green-700 p-2 rounded text-sm font-bold">
             Open App ↗
           </a>
@@ -100,10 +156,9 @@ const uiSchemaStr = blueprint ? JSON.stringify(JSON.parse(blueprint.ui_schema), 
       <!-- Editors -->
       <div class="flex-1 flex overflow-hidden">
         <!-- UI Editor -->
-        <div class="flex-1 p-4 flex flex-col border-r">
+        <div class={`flex-1 p-4 flex flex-col border-r ${currentFile ? 'hidden md:flex' : 'flex'}`}>
           <h2 class="font-bold mb-2 flex justify-between">
               UI Schema (JSON)
-              <span class="text-xs font-normal text-gray-500">Auto-saved via button</span>
           </h2>
           <form method="POST" class="flex-1 flex flex-col">
               <input type="hidden" name="action" value="save_ui" />
@@ -115,24 +170,31 @@ const uiSchemaStr = blueprint ? JSON.stringify(JSON.parse(blueprint.ui_schema), 
           </form>
         </div>
 
-        <!-- Function Editor (Simplified - usually you'd select a function to edit) -->
+        <!-- Code Editor -->
+        {currentFile && (
         <div class="flex-1 p-4 flex flex-col bg-gray-50">
-           <h2 class="font-bold mb-2">Serverless Functions</h2>
-           <div class="text-sm text-gray-500 mb-4">
-               Select a function from the sidebar to edit (Not implemented in this demo, showing list).
-               <br/>
-               The AI Agent generates these automatically.
-           </div>
+           <h2 class="font-bold mb-2 flex justify-between">
+               {currentFile}
+               <button onclick="document.getElementById('codeForm').submit()" class="text-xs bg-blue-600 text-white px-3 py-1 rounded">Save File</button>
+           </h2>
 
-           <div class="space-y-4 overflow-y-auto">
-               {functions.map(fn => (
-                   <div class="bg-white p-4 rounded border shadow-sm">
-                       <h3 class="font-bold text-sm mb-2">{fn.name}</h3>
-                       <pre class="bg-gray-900 text-gray-100 p-2 rounded text-xs overflow-x-auto">{fn.code}</pre>
-                   </div>
-               ))}
-           </div>
+           <form id="codeForm" method="POST" class="flex-1 flex flex-col">
+               <input type="hidden" name="action" value="save_file" />
+               <input type="hidden" name="filename" value={currentFile} />
+               <textarea
+                 name="content"
+                 class="flex-1 font-mono text-sm p-4 bg-white border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+               >{currentFileContent}</textarea>
+           </form>
         </div>
+        )}
+
+        {!currentFile && (
+            <div class="flex-1 p-12 flex flex-col items-center justify-center text-gray-400 bg-gray-50">
+                <div class="text-4xl mb-4">←</div>
+                <p>Select a file to edit code</p>
+            </div>
+        )}
       </div>
     </div>
   </div>

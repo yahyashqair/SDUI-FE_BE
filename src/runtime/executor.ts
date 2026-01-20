@@ -1,51 +1,72 @@
-import { getTenantDB } from '../db/tenant';
-import vm from 'vm';
+import { FileSystem } from '../db/fs';
+import { exec } from 'child_process';
+import util from 'util';
+import path from 'path';
+import fs from 'fs';
 
-export const executeFunction = async (projectId: string, code: string, params: any) => {
-  const db = getTenantDB(projectId);
+const execAsync = util.promisify(exec);
 
-  // Create a secure context
-  const context = {
-    db: {
-      query: (sql: string, ...args: any[]) => {
-        const stmt = db.prepare(sql);
-        if (sql.trim().toLowerCase().startsWith('select')) {
-          return stmt.all(...args);
-        } else {
-          return stmt.run(...args);
-        }
-      }
-    },
-    params,
-    console: {
-      log: (...args: any[]) => console.log(`[App ${projectId}]`, ...args),
-      error: (...args: any[]) => console.error(`[App ${projectId}]`, ...args)
-    },
-    // Add other safe utilities here
-    JSON,
-    Date,
-    Math
-  };
+export const executeFunction = async (projectId: string, entryPoint: string, params: any) => {
+  const projectDir = FileSystem.getProjectDir(projectId);
+  const scriptPath = path.join(projectDir, entryPoint);
 
-  vm.createContext(context);
+  if (!fs.existsSync(scriptPath)) {
+      return { error: `Function entry point ${entryPoint} not found` };
+  }
 
-  // Wrap code in an async function to allow await if we supported async/await in pure JS,
-  // but better-sqlite3 is synchronous, which simplifies things immensely for this demo.
-  // We'll wrap it in a function invocation.
-  const script = new vm.Script(`
-    (function() {
-      try {
-        ${code}
-      } catch (e) {
-        return { error: e.message };
-      }
-    })()
-  `);
+  // Create a package.json in the project to force CommonJS if not present
+  // This solves the issue where root package.json type: module forces .js files to be ESM
+  const pkgPath = path.join(projectDir, 'package.json');
+  if (!fs.existsSync(pkgPath)) {
+      fs.writeFileSync(pkgPath, JSON.stringify({ type: 'commonjs' }));
+  }
+
+  const runnerCode = `
+    try {
+        const main = require('./${path.basename(entryPoint)}');
+        const params = ${JSON.stringify(params)};
+
+        (async () => {
+            try {
+                if (typeof main === 'function') {
+                    const result = await main(params);
+                    console.log(JSON.stringify(result));
+                } else if (typeof main.handler === 'function') {
+                    const result = await main.handler(params);
+                    console.log(JSON.stringify(result));
+                } else {
+                    console.log(JSON.stringify({ success: true }));
+                }
+            } catch (e) {
+                console.error(e);
+                process.exit(1);
+            }
+        })();
+    } catch (e) {
+        console.error(e);
+        process.exit(1);
+    }
+  `;
+
+  const runnerPath = path.join(projectDir, `__runner_${Date.now()}.cjs`);
+  fs.writeFileSync(runnerPath, runnerCode);
 
   try {
-    const result = script.runInContext(context);
-    return result;
+      // Run in a separate process
+      const { stdout, stderr } = await execAsync(`node ${runnerPath}`, {
+          cwd: projectDir,
+          env: { ...process.env, PROJECT_ID: projectId } // Pass context via ENV
+      });
+
+      try {
+          // cleanup
+          fs.unlinkSync(runnerPath);
+          return JSON.parse(stdout.trim());
+      } catch (e) {
+          return { result: stdout.trim(), log: stderr };
+      }
   } catch (e: any) {
-    return { error: e.message };
+      try { fs.unlinkSync(runnerPath); } catch {}
+      return { error: e.message, stderr: e.stderr };
   }
 };

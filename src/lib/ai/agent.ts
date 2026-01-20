@@ -42,7 +42,8 @@ export const generateApp = async (prompt: string) => {
                         action: {
                             type: 'server',
                             functionName: 'addTask',
-                            collectValues: ['new_task']
+                            collectValues: ['new_task'],
+                            onSuccess: 'refresh'
                         }
                     }
                 }
@@ -67,7 +68,8 @@ export const generateApp = async (prompt: string) => {
                               action: {
                                   type: 'server',
                                   functionName: 'completeTask',
-                                  params: { id: '{id}' }
+                                  params: { id: '{id}' },
+                                  onSuccess: 'refresh'
                               }
                           },
                           {
@@ -76,7 +78,8 @@ export const generateApp = async (prompt: string) => {
                             action: {
                                 type: 'server',
                                 functionName: 'deleteTask',
-                                params: { id: '{id}' }
+                                params: { id: '{id}' },
+                                onSuccess: 'refresh'
                             }
                         }
                       ]
@@ -103,29 +106,45 @@ export const generateApp = async (prompt: string) => {
         {
           name: 'getTasks',
           code: `
-            return db.query("SELECT * FROM tasks ORDER BY created_at DESC");
+const db = require('./lib/db');
+
+module.exports = async (params) => {
+  return db.query("SELECT * FROM tasks ORDER BY created_at DESC");
+};
           `
         },
         {
           name: 'addTask',
           code: `
-            if (!params.new_task) return { error: 'Task title is required' };
-            db.query("INSERT INTO tasks (title) VALUES (?)", params.new_task);
-            return { success: true };
+const db = require('./lib/db');
+
+module.exports = async (params) => {
+  if (!params.new_task) return { error: 'Task title is required' };
+  db.query("INSERT INTO tasks (title) VALUES (?)", params.new_task);
+  return { success: true };
+};
           `
         },
         {
             name: 'completeTask',
             code: `
-              db.query("UPDATE tasks SET status = 'completed' WHERE id = ?", params.id);
-              return { success: true };
+const db = require('./lib/db');
+
+module.exports = async (params) => {
+  db.query("UPDATE tasks SET status = 'completed' WHERE id = ?", params.id);
+  return { success: true };
+};
             `
         },
         {
             name: 'deleteTask',
             code: `
-              db.query("DELETE FROM tasks WHERE id = ?", params.id);
-              return { success: true };
+const db = require('./lib/db');
+
+module.exports = async (params) => {
+  db.query("DELETE FROM tasks WHERE id = ?", params.id);
+  return { success: true };
+};
             `
         }
       ]

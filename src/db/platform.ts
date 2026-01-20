@@ -63,7 +63,7 @@ export interface FunctionDef {
   id: string;
   project_id: string;
   name: string;
-  code: string;
+  code: string; // Deprecated, but keeping for compatibility. If mapping to file, this might be the path.
   method: string;
   created_at: string;
 }
@@ -86,11 +86,9 @@ export const PlatformDB = {
 
   saveBlueprint: (projectId: string, uiSchema: any, dataSchema: any): Blueprint => {
     const id = uuidv4();
-    // Simple versioning: count existing + 1
     const count = db.prepare('SELECT COUNT(*) as count FROM blueprints WHERE project_id = ?').get(projectId) as { count: number };
     const version = count.count + 1;
 
-    // Deactivate others if this is active (default active for now)
     db.prepare('UPDATE blueprints SET active = 0 WHERE project_id = ?').run(projectId);
 
     const stmt = db.prepare('INSERT INTO blueprints (id, project_id, version, ui_schema, data_schema, active) VALUES (?, ?, ?, ?, ?, 1)');
@@ -112,18 +110,18 @@ export const PlatformDB = {
   },
 
   saveFunction: (projectId: string, name: string, code: string, method: string = 'GET') => {
-    const id = uuidv4();
-    // Upsert logic for simplicity (overwrite same name for project)
+    // Check if function with this name exists
     const existing = db.prepare('SELECT id FROM functions WHERE project_id = ? AND name = ?').get(projectId, name) as { id: string };
 
     if (existing) {
-      db.prepare('UPDATE functions SET code = ?, method = ? WHERE id = ?').run(code, method, existing.id);
-      return { id: existing.id, project_id: projectId, name, code, method, created_at: new Date().toISOString() };
-    } else {
-      const stmt = db.prepare('INSERT INTO functions (id, project_id, name, code, method) VALUES (?, ?, ?, ?, ?)');
-      stmt.run(id, projectId, name, code, method);
-      return { id, project_id: projectId, name, code, method, created_at: new Date().toISOString() };
+       db.prepare('UPDATE functions SET code = ?, method = ? WHERE id = ?').run(code, method, existing.id);
+       return { id: existing.id, project_id: projectId, name, code, method, created_at: new Date().toISOString() };
     }
+
+    const id = uuidv4();
+    const stmt = db.prepare('INSERT INTO functions (id, project_id, name, code, method) VALUES (?, ?, ?, ?, ?)');
+    stmt.run(id, projectId, name, code, method);
+    return { id, project_id: projectId, name, code, method, created_at: new Date().toISOString() };
   },
 
   getFunctions: (projectId: string): FunctionDef[] => {
