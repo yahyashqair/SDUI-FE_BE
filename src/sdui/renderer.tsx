@@ -116,6 +116,30 @@ export function SDUIRenderer({
             });
             break;
 
+          case 'server':
+            // Check if global handler exists (injected by runtime)
+            if ((window as any).SERVER_ACTION_HANDLER) {
+               // Collect values from formValues if specified
+               const params = { ...(action.params || {}) };
+               if (action.collectValues && Array.isArray(action.collectValues)) {
+                  action.collectValues.forEach((key: string) => {
+                      if (formValues[key]) params[key] = formValues[key];
+                  });
+               }
+
+               const result = await (window as any).SERVER_ACTION_HANDLER(action.functionName, params);
+               if (result && result.error) throw new Error(result.error);
+
+               // If success, maybe refresh? For now just log or reload if needed.
+               // Ideally we should have a way to update local state or re-fetch data.
+               if (action.onSuccess === 'refresh') {
+                   window.location.reload();
+               }
+            } else {
+                console.warn('No server action handler found');
+            }
+            break;
+
           case 'scroll':
             const element = document.querySelector(action.payload as string);
             if (element) {

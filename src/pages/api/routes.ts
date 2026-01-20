@@ -1,16 +1,4 @@
-import type { APIRoute } from 'astro';
-import { readdir } from 'fs/promises';
-import { join } from 'path';
 
-/**
- * Route Registry - Auto-discovers deployed MFEs
- * Scans dist/client/mfe/ for existing components on each request
- */
-
-/**
- * GET /api/routes?path=/some/path
- * Returns the MFE spec for the given path
- */
 import type { APIRoute } from 'astro';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
@@ -29,7 +17,7 @@ export const GET: APIRoute = async ({ url }) => {
         const fileContent = await readFile(registryPath, 'utf-8');
         registry = JSON.parse(fileContent);
     } catch (e) {
-        console.error('Failed to read MFE registry', e);
+        // console.error('Failed to read MFE registry', e);
         // Fallback or empty
     }
 
