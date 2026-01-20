@@ -1,0 +1,14 @@
+[
+  {
+    "id": "test-release",
+    "version": "1.0.0",
+    "status": "draft",
+    "deployments": [
+      {
+        "env": "staging",
+        "deployedAt": "2026-01-20T10:08:27.386Z",
+        "deployedBy": "test-script"
+      }
+    ]
+  }
+]

@@ -13,6 +13,8 @@ export interface MFEConfig {
     integrity?: string;
     version: string;
     variables: Record<string, any>;
+    dependencies?: Record<string, string>;
+    encapsulation?: 'shadow' | 'none';
     description?: string;
     active: boolean;
     createdAt: Date;
@@ -110,6 +112,8 @@ export async function registerMFE(
         integrity,
         version: options.version || '1.0.0',
         variables: options.variables || {},
+        dependencies: options.dependencies || {},
+        encapsulation: options.encapsulation || 'none',
         description: options.description,
         active: options.active !== false,
         createdAt: new Date(),

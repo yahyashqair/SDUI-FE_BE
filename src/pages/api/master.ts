@@ -34,10 +34,59 @@ export const ALL: APIRoute = async ({ request }) => {
         // 4. Releases Management
         if (resource === 'releases') {
             const releaseFile = path.join(process.cwd(), 'data/releases.json');
+            const ENVIRONMENTS = ['dev', 'staging', 'prod'];
 
             // Ensure file exists
             if (!fs.existsSync(releaseFile)) {
                 fs.writeFileSync(releaseFile, JSON.stringify([]));
+            }
+
+            if (action === 'envs') {
+                return json(200, { environments: ENVIRONMENTS });
+            }
+
+            if (action === 'promote') {
+                if (method !== 'POST') return json(405, { error: 'POST required' });
+                const { releaseId, env } = body as any;
+
+                if (!ENVIRONMENTS.includes(env)) {
+                    return json(400, { error: 'Invalid environment' });
+                }
+
+                let releases = JSON.parse(fs.readFileSync(releaseFile, 'utf-8'));
+                const releaseIndex = releases.findIndex((r: any) => r.id === releaseId);
+
+                if (releaseIndex === -1) {
+                    return json(404, { error: 'Release not found' });
+                }
+
+                // Initialize deployments if missing
+                if (!releases[releaseIndex].deployments) {
+                    releases[releaseIndex].deployments = [];
+                }
+
+                // Add deployment record
+                releases[releaseIndex].deployments.push({
+                    env,
+                    deployedAt: new Date().toISOString(),
+                    deployedBy: 'admin' // TODO: auth info
+                });
+
+                // Update status if promoting to prod
+                if (env === 'prod') {
+                    releases[releaseIndex].status = 'active';
+                    // Deactivate others? Maybe later.
+                }
+
+                fs.writeFileSync(releaseFile, JSON.stringify(releases, null, 2));
+                return json(200, { success: true, release: releases[releaseIndex] });
+            }
+
+            if (action === 'rollback') {
+                // Rollback is essentially promoting an older version to an environment
+                // Re-use logic or just call it 'promote' in UI, but good to have explicit API
+                // For now, let's just alias to promote logic
+                return json(400, { error: 'Use promote action to deploy an older version' });
             }
 
             if (method === 'GET') {

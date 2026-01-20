@@ -15,6 +15,15 @@ if (!fs.existsSync(TENANTS_DIR)) {
 export const FileSystem = {
   getProjectDir: (projectId: string) => path.join(TENANTS_DIR, projectId, 'src'),
 
+  validatePath(projectId: string, targetPath: string): string {
+    const projectRoot = path.join(TENANTS_DIR, projectId);
+    const resolvedPath = path.resolve(projectRoot, 'src', targetPath);
+    if (!resolvedPath.startsWith(projectRoot)) {
+      throw new Error('Access denied: Path traversal attempt');
+    }
+    return resolvedPath;
+  },
+
   initProject: async (projectId: string) => {
     const projectDir = path.join(TENANTS_DIR, projectId);
     const srcDir = path.join(projectDir, 'src');
@@ -54,21 +63,27 @@ module.exports = {
 
     // Init Git
     try {
-        if (!fs.existsSync(path.join(projectDir, '.git'))) {
-            await execAsync(`git init`, { cwd: projectDir });
-            await execAsync(`git config user.email "ai@platform.com"`, { cwd: projectDir });
-            await execAsync(`git config user.name "AI Builder"`, { cwd: projectDir });
-        }
+      if (!fs.existsSync(path.join(projectDir, '.git'))) {
+        await execAsync(`git init`, { cwd: projectDir });
+        await execAsync(`git config user.email "ai@platform.com"`, { cwd: projectDir });
+        await execAsync(`git config user.name "AI Builder"`, { cwd: projectDir });
+      }
     } catch (e) {
-        // console.error('Failed to init git', e);
+      // console.error('Failed to init git', e);
     }
 
     return srcDir;
   },
 
   listFiles: (projectId: string, dir: string = '') => {
+    // Validation handled by returning paths relative to safe dir
     const projectSrc = path.join(TENANTS_DIR, projectId, 'src');
     const targetDir = path.join(projectSrc, dir);
+
+    // Initial basic check
+    if (!path.resolve(targetDir).startsWith(projectSrc)) {
+      throw new Error('Access denied: Path traversal attempt');
+    }
 
     if (!fs.existsSync(targetDir)) return [];
 
@@ -81,13 +96,13 @@ module.exports = {
   },
 
   readFile: (projectId: string, filePath: string) => {
-    const fullPath = path.join(TENANTS_DIR, projectId, 'src', filePath);
+    const fullPath = FileSystem.validatePath(projectId, filePath);
     if (!fs.existsSync(fullPath)) throw new Error('File not found');
     return fs.readFileSync(fullPath, 'utf-8');
   },
 
   writeFile: async (projectId: string, filePath: string, content: string) => {
-    const fullPath = path.join(TENANTS_DIR, projectId, 'src', filePath);
+    const fullPath = FileSystem.validatePath(projectId, filePath);
     const dir = path.dirname(fullPath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
@@ -95,13 +110,13 @@ module.exports = {
   },
 
   commit: async (projectId: string, message: string) => {
-      const projectDir = path.join(TENANTS_DIR, projectId);
-      try {
-          await execAsync(`git add .`, { cwd: projectDir });
-          await execAsync(`git commit -m "${message}"`, { cwd: projectDir });
-          return true;
-      } catch (e) {
-          return false;
-      }
+    const projectDir = path.join(TENANTS_DIR, projectId);
+    try {
+      await execAsync(`git add .`, { cwd: projectDir });
+      await execAsync(`git commit -m "${message}"`, { cwd: projectDir });
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 };

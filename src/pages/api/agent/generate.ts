@@ -1,14 +1,17 @@
 import type { APIRoute } from 'astro';
+import { FileSystem } from '../../../db/fs';
+import path from 'path';
 
 /**
  * System prompt that instructs the AI to generate React components
  * using React.createElement syntax for direct browser execution.
  */
-const SYSTEM_PROMPT = `You are an expert React developer that generates web components.
+const BASE_SYSTEM_PROMPT = `You are an expert React developer that generates web components.
 
 ## OUTPUT FORMAT
 You MUST output ONLY valid JavaScript code. No markdown, no explanations, no code fences.
 The code must be a single ES module that default exports a React function component.
+If you introduce a NEW dependency, you MUST add a comment at the very top: // REQUIRES: <package-name>
 
 ## TECHNICAL REQUIREMENTS
 1. Use \`React.createElement\` (aliased as \`h\`) - NOT JSX
@@ -18,6 +21,7 @@ The code must be a single ES module that default exports a React function compon
 5. Make the design modern, colorful, and professional
 
 ## EXAMPLE OUTPUT
+// REQUIRES: canvas-confetti
 const { useState, useEffect } = window.React;
 const h = window.React.createElement;
 
@@ -45,7 +49,7 @@ Now generate the component based on the user's request. Output ONLY the JavaScri
  * Streaming endpoint for AI-powered component generation
  */
 export const POST: APIRoute = async ({ request }) => {
-    const { prompt, model = 'GLM-4.7' } = await request.json();
+    const { prompt, projectId, model = 'GLM-4.7' } = await request.json();
 
     if (!prompt) {
         return new Response(JSON.stringify({ error: 'prompt is required' }), {
@@ -62,6 +66,44 @@ export const POST: APIRoute = async ({ request }) => {
             headers: { 'Content-Type': 'application/json' }
         });
     }
+
+    let projectContext = '';
+    if (projectId) {
+        try {
+            const files = FileSystem.listFiles(projectId);
+            // Limit file list to top 50 to avoid token overflow
+            const fileList = files.slice(0, 50).map(f => `- ${f.path} (${f.type})`).join('\n');
+
+            // Try to read package.json
+            let pkgJson = '{}';
+            try {
+                pkgJson = FileSystem.readFile(projectId, 'package.json');
+            } catch { }
+
+            let depList = 'None';
+            try {
+                const pkg = JSON.parse(pkgJson);
+                const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+                depList = Object.keys(deps).join(', ');
+            } catch { }
+
+            projectContext = `
+## PROJECT CONTEXT
+You are working in an existing project with ID: ${projectId}.
+Files:
+${fileList}
+
+Installed Dependencies:
+${depList}
+
+If you need to use a library, PREFER existing dependencies.
+`;
+        } catch (e) {
+            console.error("Failed to load context", e);
+        }
+    }
+
+    const SYSTEM_PROMPT = BASE_SYSTEM_PROMPT + projectContext;
 
     // Call OpenAI-compatible API with streaming
     const response = await fetch('https://api.z.ai/api/coding/paas/v4/chat/completions', {
