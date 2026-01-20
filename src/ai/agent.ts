@@ -1,6 +1,7 @@
 
 import { AITools } from './tools';
 import { FileSystem } from '../db/fs';
+import { ARCHITECT_PROMPT, ENGINEER_PROMPT } from './system';
 
 // Mock OpenAI Response Structure
 interface AIResponse {
@@ -191,16 +192,7 @@ async function callAI(history: any[], tools: any[], systemPrompt: string): Promi
 
 export const ArchitectAgent = {
     process: async (projectId: string, prompt: string) => {
-        const systemPrompt = `You are a Senior Software Architect. 
-Your goal is to design a robust microservices and micro-frontend architecture based on the user's request.
-1. Analyze the requirements.
-2. checking existing project context using 'readProjectContext'.
-3. Propose a design including: 
-    - Micro-Frontends (MFEs) needed
-    - Backend Services (Functions) needed
-    - Database Schema changes
-    - Routes
-Output your design as a clear markdown document. Do NOT write code yet.`;
+        const systemPrompt = ARCHITECT_PROMPT;
 
         const history = [{ role: 'user', content: prompt }];
         // Only read context allowed for Architect
