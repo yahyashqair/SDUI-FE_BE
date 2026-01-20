@@ -1,39 +1,44 @@
 ---
-import Layout from '../../../layouts/Layout.astro';
-import { getAppBlueprint, parseUISchema } from '../../../runtime/renderer';
-import { executeFunction } from '../../../runtime/executor';
-import { SDUIRenderer } from '../../../sdui/renderer';
-import { PlatformDB } from '../../../db/platform';
+import Layout from "../../../layouts/Layout.astro";
+import { getAppBlueprint, parseUISchema } from "../../../platform/renderer";
+import { executeFunction } from "../../../platform/executor";
+import { SDUIRenderer } from "../../../sdui/renderer";
+import { PlatformDB } from "../../../db/platform";
 
 const { projectId, path } = Astro.params;
 
-if (!projectId) return Astro.redirect('/404');
+if (!projectId) return Astro.redirect("/404");
 
 const project = PlatformDB.getProject(projectId);
-if (!project) return Astro.redirect('/404');
+if (!project) return Astro.redirect("/404");
 
 // API Handling
-if (Astro.request.method === 'POST') {
-  const url = new URL(Astro.request.url);
-  // Check if it's an action call
-  // SDUI usually sends actions via a specific endpoint or we can handle it here if it's a form submission
+if (Astro.request.method === "POST") {
+    const url = new URL(Astro.request.url);
+    // Check if it's an action call
+    // SDUI usually sends actions via a specific endpoint or we can handle it here if it's a form submission
 
-  // For this demo, we assume the client-side SDUI renderer sends JSON POSTs to this URL
-  // with an "action" field or similar, OR we follow a convention like `?_action=functionName`
+    // For this demo, we assume the client-side SDUI renderer sends JSON POSTs to this URL
+    // with an "action" field or similar, OR we follow a convention like `?_action=functionName`
 
-  // Let's assume the body contains { functionName, params }
-  try {
-      const body = await Astro.request.json();
-      if (body.functionName) {
-          const result = await executeFunction(projectId,
-              PlatformDB.getFunctions(projectId).find(f => f.name === body.functionName)?.code || '',
-              body.params || {}
-          );
-          return new Response(JSON.stringify(result), { headers: { 'Content-Type': 'application/json' }});
-      }
-  } catch (e) {
-      // Not a JSON request or failed
-  }
+    // Let's assume the body contains { functionName, params }
+    try {
+        const body = await Astro.request.json();
+        if (body.functionName) {
+            const result = await executeFunction(
+                projectId,
+                PlatformDB.getFunctions(projectId).find(
+                    (f) => f.name === body.functionName,
+                )?.code || "",
+                body.params || {},
+            );
+            return new Response(JSON.stringify(result), {
+                headers: { "Content-Type": "application/json" },
+            });
+        }
+    } catch (e) {
+        // Not a JSON request or failed
+    }
 }
 
 // Check for _serverless path manually if needed, but the dynamic route catches everything.
@@ -41,7 +46,7 @@ if (Astro.request.method === 'POST') {
 
 const blueprint = getAppBlueprint(projectId);
 if (!blueprint) {
-    return new Response('App not published or empty', { status: 404 });
+    return new Response("App not published or empty", { status: 404 });
 }
 
 const uiSchema = parseUISchema(blueprint);
@@ -51,7 +56,6 @@ const uiSchema = parseUISchema(blueprint);
 // or we can handle it by ensuring actions in the schema use a relative URL that this page handles.
 // The `agent.ts` generates actions with `type: 'server'` and `functionName`.
 // The client-side renderer needs to know how to handle `type: 'server'`.
-
 ---
 
 <Layout title={project.name}>
@@ -59,9 +63,9 @@ const uiSchema = parseUISchema(blueprint);
         // Global handler for server actions
         window.SERVER_ACTION_HANDLER = async (functionName, params) => {
             const response = await fetch(window.location.href, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ functionName, params })
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ functionName, params }),
             });
             return await response.json();
         };

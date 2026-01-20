@@ -4,6 +4,9 @@ A complete Server-Driven UI implementation using Astro framework and React. This
 
 ## Features
 
+- **Real AI Agent**: Integrated OpenAI-compatible agent for planning and code generation
+- **Release Pipeline**: Snapshot and deploy versions of your Micro-Frontends and Backend Functions
+- **Master Dashboard**: Central control plane to manage MFEs, Functions, Routes, and Releases
 - **Type-Safe**: Full TypeScript support with comprehensive type definitions
 - **Component Registry**: Central registry for dynamic component resolution
 - **Action System**: Server-defined actions for navigation and API calls

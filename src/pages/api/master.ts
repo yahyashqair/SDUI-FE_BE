@@ -1,7 +1,9 @@
 
 import type { APIRoute } from 'astro';
-import mfeManager from '../../master-app/lib/mfe-manager';
-import fissionClient from '../../master-app/lib/fission-client';
+import mfeManager from '../../dashboard/lib/mfe-manager';
+import fissionClient from '../../dashboard/lib/fission-client';
+import fs from 'fs';
+import path from 'path';
 
 export const ALL: APIRoute = async ({ request }) => {
     const url = new URL(request.url);
@@ -29,6 +31,52 @@ export const ALL: APIRoute = async ({ request }) => {
     });
 
     try {
+        // 4. Releases Management
+        if (resource === 'releases') {
+            const releaseFile = path.join(process.cwd(), 'data/releases.json');
+
+            // Ensure file exists
+            if (!fs.existsSync(releaseFile)) {
+                fs.writeFileSync(releaseFile, JSON.stringify([]));
+            }
+
+            if (method === 'GET') {
+                const releases = JSON.parse(fs.readFileSync(releaseFile, 'utf-8'));
+                // Sort by created_at desc
+                releases.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                return new Response(JSON.stringify({ releases }), { status: 200 });
+            }
+
+            if (method === 'POST') {
+                const { version, description, status } = body as any;
+
+                // For artifacts, we snapshot the CURRENT MFE registry
+                const mfeRegistry = mfeManager.loadRegistry();
+                const artifacts = {
+                    mfes: Object.values(mfeRegistry).map((m: any) => ({
+                        name: m.name, // The registry structure might be different, let's check mfeManager
+                        version: m.version,
+                        source: m.source
+                    }))
+                };
+
+                const newRelease = {
+                    id: crypto.randomUUID(),
+                    version,
+                    description,
+                    artifacts,
+                    status: status || 'draft',
+                    created_at: new Date().toISOString()
+                };
+
+                const releases = JSON.parse(fs.readFileSync(releaseFile, 'utf-8'));
+                releases.push(newRelease);
+                fs.writeFileSync(releaseFile, JSON.stringify(releases, null, 2));
+
+                return new Response(JSON.stringify({ release: newRelease }), { status: 201 });
+            }
+        }
+
         // MFE Management
         if (resource === 'mfe') {
             switch (action) {

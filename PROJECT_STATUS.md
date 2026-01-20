@@ -18,42 +18,48 @@ This project realizes the vision of a "Serverless Replit" where an AI Agent acts
     - `createBackendFunction`: Writes Node.js code to `data/tenants/<id>/src/`.
     - `createFrontendComponent`: Writes React code to `data/tenants/<id>/src/frontend/` and triggers a build.
     - `updateUILayout`: Updates the SDUI JSON Blueprint.
-- **Status**: Currently mocks the LLM "planning" phase but fully executes the tools on the actual filesystem and database.
+- **Status**: **Fully Integrated**. Uses a generic OpenAI-compatible API (configured via `.env`) to plan and execute tools. Includes a self-correcting feedback loop where tool execution errors are fed back to the AI for resolution.
 
-### 2. MFE Pipeline (`src/runtime/bundler.ts`, `src/pages/api/mfe/...`)
+### 2. Release Pipeline & MFE Registry
+- **Registry**: A PostgreSQL-backed registry (`mfe_registry`) tracks all Micro-Frontend versions and their active status.
+- **Releases**: A `releases` table stores snapshots of the entire platform (MFEs + Functions).
+- **Deployment**:
+    - **Snapshot**: Create a immutable release version (e.g., `v1.0.0`) comprising specific artifact versions.
+    - **Activation**: "Direct Deployment" updates the registry to serve the artifacts from the chosen release.
+- **Fission Backend**:
+    - `api/releases.js`: Handles release creation and deployment logic.
+
+### 3. MFE Pipeline (`src/runtime/bundler.ts`, `src/pages/api/mfe/...`)
 - **Generation**: AI writes `.tsx` files.
 - **Build**: `esbuild` compiles these into standalone ESM bundles in `data/tenants/<id>/dist`.
 - **Serving**: An API route serves these bundles.
 - **Consumption**: The `RemoteRenderer` component loads these bundles at runtime into the React application.
 
-### 3. Backend Runtime (`src/runtime/executor.ts`, `src/db/fs.ts`)
-- **Storage**: Multi-file projects stored in `data/tenants/<id>/src`.
-- **Execution**: `child_process` spawns a Node.js runner that loads the user code and injects a database connection helper (`lib/db.js`).
-- **Database**: `better-sqlite3` provides fast, synchronous access to isolated tenant DBs.
+### 4. Backend Runtime (Fission + Postgres)
+- **Execution**: Serverless functions run on Fission (Kubernetes).
+- **Data**: Centralized PostgreSQL database with `pgbouncer` for connection pooling.
+- **Functions**:
+    - `mfe-registry`: Serves MFE metadata.
+    - `releases`: Manages release lifecycle.
+    - `sdui-config`: Serves UI layouts.
 
-### 4. Builder UI (`src/pages/builder`)
-- **Interface**: A web-based IDE that allows:
-    - Chatting with the AI to generate apps.
-    - Viewing/Editing the generated file system (Frontend & Backend).
-    - Viewing/Editing the UI Schema.
-    - Committing changes to Git.
+### 5. Builder UI (`src/pages/builder` & `MasterDashboard`)
+- **Interface**: A web-based IDE and Control Plane.
+    - **AI Chat**: Chat with the agent to generate apps.
+    - **Master Dashboard**: Manage MFEs, Functions, Routes, and **Releases**.
+    - **Visual Editors**: View/Edit generated code and schemas.
 
 ## Current Limitations
 
 1.  **Security**:
-    - **Code Execution**: User code runs on the host machine via `child_process`. This is unsafe for a public multi-tenant environment. **Recommendation**: Move to Firecracker microVMs or a sandboxed runtime like `deno` or `isolated-vm` for production.
-    - **Database**: Direct file access to SQLite is fast but limits horizontal scaling. **Recommendation**: Use a proper database service or LibSQL for replication.
+    - **Sandboxing**: While Fission provides some isolation, tenant code execution needs stricter security boundaries (e.g., gVisor or Firecracker) for a public multi-tenant SaaS.
 
-2.  **AI Integration**:
-    - **Mocked Intelligence**: The current "Planner" is a hardcoded mock for a Todo App scenario. **Action**: Replace `mockPlanner` with a real call to `openai.chat.completions.create`.
-    - **Context Window**: The agent doesn't yet "read" existing files to make iterative edits; it mostly overwrites.
+2.  **Frontend Bundling**:
+    - **Dependencies**: MFEs currently assume `react` and `react-dom` are external. Creating components requiring other 3rd-party libs requires `npm install` support in the build pipeline.
 
-3.  **Frontend Bundling**:
-    - **Dependencies**: MFEs currently assume `react` and `react-dom` are external. If the AI generates code using other libraries (e.g., `lodash`), the build will fail unless we add a package manager step (`npm install` in tenant dir).
-
-4.  **Error Handling**:
-    - Runtime errors in user functions are caught but debugging is limited to console logs returned in the JSON response.
+3.  **Observability**:
+    - **Logs**: We can view Fission logs, but a centralized user-facing log stream for their specific functions is work-in-progress.
 
 ## Conclusion
 
-The project successfully demonstrates the *architectural pattern* of an AI-driven, serverless, MFE-based app builder. It fulfills the core requirement of "limiting AI errors" by using SDUI for layout while allowing flexibility via MFEs for custom logic.
+The project has achieved its core architectural goals: **Real AI-driven development**, **Serverless Backend**, and a **Robust Release Pipeline**. The Master Control Panel provides a comprehensive interface for managing this distributed system.

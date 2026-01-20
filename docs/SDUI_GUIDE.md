@@ -171,7 +171,37 @@ interface SDUIAction {
 }
 ```
 
-## Available Components
+## Advanced Concepts
+ 
+ ### Micro-Frontends (MFE)
+ 
+ The system supports loading remote React components at runtime via `RemoteRenderer`.
+ 
+ ```typescript
+ import { RemoteRenderer } from '../../sdui/RemoteRenderer';
+ 
+ <RemoteRenderer 
+     source="/api/mfe/remote/Component.js" 
+     props={{ title: "Remote Component" }} 
+     fallback={<div>Loading...</div>}
+ />
+ ```
+ 
+ ### Event Bus
+ 
+ Cross-component communication is handled by a typed Event Bus system, allowing decoupled interaction between MFEs and the Shell.
+ 
+ ```typescript
+ import { eventBus } from '../../sdui/EventBus';
+ 
+ // Subscribe
+ eventBus.on('theme:change', (theme) => { ... });
+ 
+ // Publish
+ eventBus.emit('theme:change', 'dark');
+ ```
+ 
+ ## Available Components
 
 ### Text
 

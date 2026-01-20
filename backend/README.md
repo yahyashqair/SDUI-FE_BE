@@ -44,6 +44,8 @@ fission function test --name hello
 | `hello` | `GET /api/hello` | Test function |
 | `sdui-config` | `GET /api/sdui/config?path=/` | Get SDUI page config |
 | `mfe-registry` | `GET /api/mfe/registry` | Get MFE registry |
+| `releases` | `GET /api/releases` | List Releases |
+| `releases` | `POST /api/releases` | Create or Deploy Release |
 | `auth` | `POST /api/auth/login` | Login |
 | `auth` | `GET /api/auth/verify` | Verify token |
 
@@ -62,10 +64,12 @@ backend/
 │   ├── api/
 │   │   ├── hello.js          # Test function
 │   │   ├── sdui-config.js    # SDUI config API
-│   │   └── mfe-registry.js   # MFE registry API
+│   │   ├── mfe-registry.js   # MFE registry API
+│   │   └── releases.js       # Release Management API
 │   └── data/                 # Data access (future)
 └── migrations/
-    └── 001_initial_schema.sql
+    ├── 001_initial_schema.sql # Core tables
+    └── 002_releases_table.sql # Release Snapshot tables
 ```
 
 ## Requirements

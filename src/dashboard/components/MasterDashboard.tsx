@@ -138,8 +138,8 @@ function MFEList({ mfes, onRefresh }: { mfes: MFE[]; onRefresh: () => void }) {
                             <button
                                 onClick={() => handleToggle(mfe.name, mfe.active)}
                                 className={`px-3 py-1.5 text-xs rounded ${mfe.active
-                                        ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                                    ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                                    : 'bg-green-100 text-green-700 hover:bg-green-200'
                                     }`}
                             >
                                 {mfe.active ? 'Disable' : 'Enable'}
@@ -378,9 +378,9 @@ function RouteManager({ routes, onRefresh }: { routes: FissionRoute[]; onRefresh
                                     <td className="px-4 py-3 font-medium">{r.name}</td>
                                     <td className="px-4 py-3">
                                         <span className={`px-2 py-0.5 rounded text-xs font-bold ${r.method === 'GET' ? 'bg-blue-100 text-blue-700' :
-                                                r.method === 'POST' ? 'bg-green-100 text-green-700' :
-                                                    r.method === 'DELETE' ? 'bg-red-100 text-red-700' :
-                                                        'bg-gray-100 text-gray-700'
+                                            r.method === 'POST' ? 'bg-green-100 text-green-700' :
+                                                r.method === 'DELETE' ? 'bg-red-100 text-red-700' :
+                                                    'bg-gray-100 text-gray-700'
                                             }`}>
                                             {r.method}
                                         </span>
@@ -405,10 +405,171 @@ function RouteManager({ routes, onRefresh }: { routes: FissionRoute[]; onRefresh
     );
 }
 
+// --- Release Manager Component (NEW) ---
+
+function ReleaseManager({ loading, setLoading }: { loading: boolean, setLoading: (l: boolean) => void }) {
+    const [releases, setReleases] = useState<any[]>([]);
+    const [showCreate, setShowCreate] = useState(false);
+    const [newRelease, setNewRelease] = useState({ version: '', description: '' });
+
+    const fetchReleases = async () => {
+        try {
+            const res = await fetch('/api/master?resource=releases');
+            const data = await res.json();
+            if (data.releases) setReleases(data.releases);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    useEffect(() => {
+        fetchReleases();
+    }, []);
+
+    const handleCreate = async () => {
+        if (!newRelease.version) return;
+        setLoading(true);
+        try {
+            await fetch('/api/master?resource=releases', {
+                method: 'POST',
+                body: JSON.stringify(newRelease)
+            });
+            setShowCreate(false);
+            setNewRelease({ version: '', description: '' });
+            fetchReleases();
+        } catch (e) {
+            alert('Failed to create release');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeploy = async (id: string) => {
+        if (!confirm('Are you sure you want to deploy this release? It will update the active MFEs.')) return;
+        setLoading(true);
+        try {
+            await fetch('/api/master?resource=releases&action=deploy', {
+                method: 'POST',
+                body: JSON.stringify({ id })
+            });
+            alert('Deployed successfully!');
+            fetchReleases();
+        } catch (e) {
+            alert('Failed to deploy');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div>
+                    <h2 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                        Release Pipeline
+                    </h2>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Snapshot and version your artifacts.</p>
+                </div>
+                <button
+                    onClick={() => setShowCreate(true)}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-white text-sm font-medium transition-all"
+                >
+                    + Create Release
+                </button>
+            </div>
+
+            {/* List */}
+            <div className="grid gap-4">
+                {releases.map(rel => (
+                    <div key={rel.id} className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 flex justify-between items-center group hover:border-purple-500 transition-all shadow-sm">
+                        <div>
+                            <div className="flex items-center gap-3">
+                                <span className="font-mono text-lg font-bold text-gray-900 dark:text-white">{rel.version}</span>
+                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${rel.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                                    }`}>
+                                    {rel.status}
+                                </span>
+                            </div>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{rel.description}</p>
+                            <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                                <span>{new Date(rel.created_at).toLocaleString()}</span>
+                                <span>{rel.artifacts?.mfes?.length || 0} MFEs</span>
+                            </div>
+                        </div>
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                                onClick={() => handleDeploy(rel.id)}
+                                className="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-xs text-white"
+                            >
+                                Deploy
+                            </button>
+                            <button className="px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded text-xs text-gray-700 dark:text-gray-300">
+                                View Artifacts
+                            </button>
+                        </div>
+                    </div>
+                ))}
+                {releases.length === 0 && (
+                    <div className="text-center py-12 text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
+                        No releases found. Create one to snapshot your platform.
+                    </div>
+                )}
+            </div>
+
+            {/* Create Modal */}
+            {showCreate && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-6 rounded-2xl w-full max-w-md shadow-2xl">
+                        <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Create Release</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Version (e.g. v1.0.0)</label>
+                                <input
+                                    value={newRelease.version}
+                                    onChange={e => setNewRelease({ ...newRelease, version: e.target.value })}
+                                    className="w-full bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none transition-all"
+                                    placeholder="v1.0.0"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Description</label>
+                                <textarea
+                                    value={newRelease.description}
+                                    onChange={e => setNewRelease({ ...newRelease, description: e.target.value })}
+                                    className="w-full bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none transition-all h-24"
+                                    placeholder="What's new in this release?"
+                                />
+                            </div>
+                            <div className="bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 p-3 rounded-lg text-xs">
+                                ℹ️ This will snapshot the currently deployed versions of all Micro-Frontends.
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button
+                                onClick={() => setShowCreate(false)}
+                                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg text-sm transition-all text-gray-700 dark:text-gray-300"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleCreate}
+                                disabled={!newRelease.version}
+                                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium transition-all"
+                            >
+                                Snapshot & Create
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // --- Main Dashboard Component ---
 
 export default function MasterDashboard() {
-    const [activeTab, setActiveTab] = useState<'overview' | 'mfes' | 'functions' | 'routes' | 'editor'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'mfes' | 'functions' | 'routes' | 'editor' | 'releases'>('overview');
     const [stats, setStats] = useState<DashboardStats>({ mfeCount: 0, functionCount: 0, envCount: 0, routeCount: 0 });
     const [mfes, setMfes] = useState<MFE[]>([]);
     const [functions, setFunctions] = useState<FissionFunction[]>([]);
@@ -494,14 +655,15 @@ export default function MasterDashboard() {
                         { id: 'mfes', label: 'Micro-Frontends' },
                         { id: 'functions', label: 'Functions' },
                         { id: 'routes', label: 'Routes' },
+                        { id: 'releases', label: 'Releases' }, // Added Release Tab
                         { id: 'editor', label: 'Deploy Code' },
                     ].map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as any)}
                             className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${activeTab === tab.id
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50'
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50'
                                 }`}
                         >
                             {tab.label}
@@ -547,7 +709,7 @@ export default function MasterDashboard() {
                 {activeTab === 'functions' && (
                     <Card title="Function List" className="max-w-5xl">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
+                            <table className="w-full text-left text-sm dark:text-gray-300">
                                 <thead className="bg-gray-100 dark:bg-gray-700">
                                     <tr>
                                         <th className="px-4 py-3">Name</th>
@@ -575,6 +737,13 @@ export default function MasterDashboard() {
                 {activeTab === 'routes' && (
                     <Card title="Route Management" className="max-w-5xl">
                         <RouteManager routes={routes} onRefresh={loadData} />
+                    </Card>
+                )}
+
+                {/* Releases Tab (NEW) */}
+                {activeTab === 'releases' && (
+                    <Card title="Release Management" className="max-w-5xl">
+                        <ReleaseManager loading={loading} setLoading={setLoading} />
                     </Card>
                 )}
 

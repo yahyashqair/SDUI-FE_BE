@@ -15,10 +15,15 @@ echo "🗄️  Running database migrations..."
 echo "Waiting for PostgreSQL to be ready..."
 kubectl wait --for=condition=ready pod -l app=postgres -n database --timeout=120s
 
-# Copy migration file to pod
-kubectl cp "$MIGRATIONS_DIR/001_initial_schema.sql" database/postgres-0:/tmp/001_initial_schema.sql
+# Copy all migration files to pod
+kubectl cp "$MIGRATIONS_DIR/" database/postgres-0:/tmp/migrations/
 
-# Run migration
-kubectl exec -n database postgres-0 -- psql -U sdui_admin -d sdui_db -f /tmp/001_initial_schema.sql
+# Run all migrations
+for file in "$MIGRATIONS_DIR"/*.sql; do
+    filename=$(basename "$file")
+    echo "Running $filename..."
+    kubectl exec -n database postgres-0 -- psql -h 127.0.0.1 -U sdui_admin -d sdui_db -f "/tmp/migrations/$filename"
+
+done
 
 echo "✅ Migrations complete!"
