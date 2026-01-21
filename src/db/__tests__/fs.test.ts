@@ -4,6 +4,8 @@ import { FileSystem } from '../fs';
 import fs from 'fs';
 import path from 'path';
 
+const tenantsDir = path.resolve(process.cwd(), 'data', 'tenants');
+
 // Improved mock factory for fs
 vi.mock('fs', () => {
     const mock = {
@@ -13,6 +15,7 @@ vi.mock('fs', () => {
         readFileSync: vi.fn(),
         unlinkSync: vi.fn(),
         readdirSync: vi.fn(),
+        realpathSync: vi.fn((p: string) => p), // Return path as-is for mocking
     };
     return {
         ...mock,
@@ -35,13 +38,14 @@ vi.mock('child_process', () => {
 
 describe('FileSystem', () => {
     const mockProjectId = 'test-project-123';
-    const tenantsDir = path.resolve(process.cwd(), 'data', 'tenants');
     const projectDir = path.join(tenantsDir, mockProjectId);
 
     beforeEach(() => {
         vi.clearAllMocks();
         // Default existsSync to false for project-specific checks
         vi.mocked(fs.existsSync).mockReturnValue(false);
+        // Setup realpathSync to return path as-is (no symlinks)
+        vi.mocked(fs.realpathSync).mockImplementation((p: fs.PathLike) => p.toString());
     });
 
     it('should initialize a project directory structure', async () => {

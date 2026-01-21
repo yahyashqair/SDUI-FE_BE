@@ -211,7 +211,7 @@ const ENGINEER_TOOLS = [
 // ------------------------------------------------------------------
 
 async function callAI(history: any[], tools: any[], systemPrompt: string): Promise<AIResponse> {
-    const API_KEY = import.meta.env.AI_API_KEY || process.env.AI_API_KEY || '08a365632d874dc39ecf74132dd31c7c.QkyVYKV250deAewc';
+    const API_KEY = import.meta.env.AI_API_KEY || process.env.AI_API_KEY;
     const API_URL = import.meta.env.AI_API_URL || process.env.AI_API_URL || 'https://api.z.ai/api/coding/paas/v4/chat/completions';
 
     if (!API_KEY) {

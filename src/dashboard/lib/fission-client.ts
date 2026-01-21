@@ -31,6 +31,56 @@ export interface FissionRoute {
 const FISSION_CLI = process.env.FISSION_CLI || 'fission';
 
 /**
+ * Sanitize CLI arguments to prevent command injection
+ * Only allows alphanumeric characters, dots, hyphens, underscores, and forward slashes
+ */
+function sanitizeArg(arg: string, argName: string): string {
+    if (typeof arg !== 'string') {
+        throw new Error(`Invalid ${argName}: must be a string`);
+    }
+    if (arg.length === 0) {
+        throw new Error(`Invalid ${argName}: cannot be empty`);
+    }
+    if (arg.length > 256) {
+        throw new Error(`Invalid ${argName}: too long (max 256 characters)`);
+    }
+    // Allow alphanumeric, dots, hyphens, underscores, and forward slashes (for paths)
+    if (!/^[a-zA-Z0-9._/-]+$/.test(arg)) {
+        throw new Error(`Invalid ${argName}: contains disallowed characters. Only alphanumeric, dots, hyphens, underscores, and forward slashes are allowed.`);
+    }
+    // Prevent path traversal
+    if (arg.includes('..')) {
+        throw new Error(`Invalid ${argName}: path traversal not allowed`);
+    }
+    return arg;
+}
+
+/**
+ * Sanitize HTTP method
+ */
+function sanitizeMethod(method: string): string {
+    const allowed = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
+    const normalized = method.toUpperCase();
+    if (!allowed.includes(normalized)) {
+        throw new Error(`Invalid HTTP method: ${method}. Allowed: ${allowed.join(', ')}`);
+    }
+    return normalized;
+}
+
+/**
+ * Sanitize URL path
+ */
+function sanitizeUrl(url: string): string {
+    if (!url.startsWith('/')) {
+        throw new Error('URL must start with /');
+    }
+    if (!/^[a-zA-Z0-9/_.-]+$/.test(url)) {
+        throw new Error('URL contains invalid characters');
+    }
+    return url;
+}
+
+/**
  * Execute fission CLI command
  */
 async function fissionExec(args: string): Promise<string> {
@@ -73,8 +123,13 @@ export async function createFunction(
     codePath: string,
     namespace = 'default'
 ): Promise<string> {
+    const safeName = sanitizeArg(name, 'name');
+    const safeEnv = sanitizeArg(env, 'env');
+    const safeCodePath = sanitizeArg(codePath, 'codePath');
+    const safeNamespace = sanitizeArg(namespace, 'namespace');
+    
     return fissionExec(
-        `function create --name ${name} --env ${env} --code ${codePath} --namespace ${namespace}`
+        `function create --name ${safeName} --env ${safeEnv} --code ${safeCodePath} --namespace ${safeNamespace}`
     );
 }
 
@@ -86,8 +141,12 @@ export async function updateFunction(
     codePath: string,
     namespace = 'default'
 ): Promise<string> {
+    const safeName = sanitizeArg(name, 'name');
+    const safeCodePath = sanitizeArg(codePath, 'codePath');
+    const safeNamespace = sanitizeArg(namespace, 'namespace');
+    
     return fissionExec(
-        `function update --name ${name} --code ${codePath} --namespace ${namespace}`
+        `function update --name ${safeName} --code ${safeCodePath} --namespace ${safeNamespace}`
     );
 }
 
@@ -95,14 +154,18 @@ export async function updateFunction(
  * Delete a function
  */
 export async function deleteFunction(name: string, namespace = 'default'): Promise<string> {
-    return fissionExec(`function delete --name ${name} --namespace ${namespace}`);
+    const safeName = sanitizeArg(name, 'name');
+    const safeNamespace = sanitizeArg(namespace, 'namespace');
+    return fissionExec(`function delete --name ${safeName} --namespace ${safeNamespace}`);
 }
 
 /**
  * Get function logs
  */
 export async function getFunctionLogs(name: string, namespace = 'default'): Promise<string> {
-    return fissionExec(`function logs --name ${name} --namespace ${namespace}`);
+    const safeName = sanitizeArg(name, 'name');
+    const safeNamespace = sanitizeArg(namespace, 'namespace');
+    return fissionExec(`function logs --name ${safeName} --namespace ${safeNamespace}`);
 }
 
 /**
@@ -114,9 +177,15 @@ export async function testFunction(
     body?: string,
     namespace = 'default'
 ): Promise<string> {
-    let cmd = `function test --name ${name} --method ${method} --namespace ${namespace}`;
+    const safeName = sanitizeArg(name, 'name');
+    const safeMethod = sanitizeMethod(method);
+    const safeNamespace = sanitizeArg(namespace, 'namespace');
+    
+    let cmd = `function test --name ${safeName} --method ${safeMethod} --namespace ${safeNamespace}`;
     if (body) {
-        cmd += ` --body '${body}'`;
+        // Safely escape body for shell - use base64 encoding to prevent injection
+        const safeBody = Buffer.from(body).toString('base64');
+        cmd += ` --body "$(echo ${safeBody} | base64 -d)"`;
     }
     return fissionExec(cmd);
 }
@@ -141,7 +210,9 @@ export async function listEnvs(): Promise<FissionEnv[]> {
  * Create environment
  */
 export async function createEnv(name: string, image: string): Promise<string> {
-    return fissionExec(`env create --name ${name} --image ${image}`);
+    const safeName = sanitizeArg(name, 'name');
+    const safeImage = sanitizeArg(image, 'image');
+    return fissionExec(`env create --name ${safeName} --image ${safeImage}`);
 }
 
 /**
@@ -170,8 +241,13 @@ export async function createRoute(
     url: string,
     functionName: string
 ): Promise<string> {
+    const safeName = sanitizeArg(name, 'name');
+    const safeMethod = sanitizeMethod(method);
+    const safeUrl = sanitizeUrl(url);
+    const safeFunctionName = sanitizeArg(functionName, 'functionName');
+    
     return fissionExec(
-        `route create --name ${name} --method ${method} --url ${url} --function ${functionName}`
+        `route create --name ${safeName} --method ${safeMethod} --url ${safeUrl} --function ${safeFunctionName}`
     );
 }
 
@@ -179,7 +255,8 @@ export async function createRoute(
  * Delete route
  */
 export async function deleteRoute(name: string): Promise<string> {
-    return fissionExec(`route delete --name ${name}`);
+    const safeName = sanitizeArg(name, 'name');
+    return fissionExec(`route delete --name ${safeName}`);
 }
 
 export default {

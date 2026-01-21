@@ -1,11 +1,18 @@
-
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
-import { POST as AgentGenerate } from '../agent/generate';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { POST as EngineerEndpoint } from '../agent/engineer';
 import { ALL as MasterAPI } from '../master';
-import { FileSystem } from '../../../db/fs';
 import fs from 'fs';
 
-vi.mock('../../../db/fs');
+// Mock the AI agent module to avoid actual API calls
+vi.mock('../../../ai/agent', () => ({
+    EngineerAgent: {
+        process: vi.fn().mockResolvedValue({
+            success: true,
+            results: [{ tool: 'test', success: true }]
+        })
+    }
+}));
+
 vi.mock('fs', () => {
     const mock = {
         existsSync: vi.fn(() => true),
@@ -20,42 +27,40 @@ vi.mock('fs', () => {
     };
 });
 
-global.fetch = vi.fn();
-
 describe('API Integration', () => {
     beforeEach(() => {
-        vi.stubEnv('OPENAI_API_KEY', 'test-key');
+        vi.stubEnv('AI_API_KEY', 'test-key');
+        vi.clearAllMocks();
     });
-    describe('AI Agent (generate)', () => {
-        it('should inject project context into prompt', async () => {
-            // Mock FileSystem finding files
-            vi.mocked(FileSystem.listFiles).mockReturnValue([
-                { path: 'src/App.js', type: 'file' }
-            ] as any);
-            vi.mocked(FileSystem.readFile).mockReturnValue('{"dependencies":{"react":"18"}}');
 
-            const req = new Request('http://localhost/api/agent/generate', {
+    describe('AI Agent (engineer)', () => {
+        it('should require projectId and instructions', async () => {
+            const req = new Request('http://localhost/api/agent/engineer', {
                 method: 'POST',
-                body: JSON.stringify({ prompt: 'make a button', projectId: 'proj-1' })
+                body: JSON.stringify({ prompt: 'make a button' }) // missing projectId
             });
 
-            // Mock OpenAI response
-            vi.mocked(global.fetch).mockResolvedValue({
-                ok: true,
-                body: { getReader: () => undefined } // simplified stream mock
-            } as any);
+            const res = await EngineerEndpoint({ request: req } as any);
+            expect(res.status).toBe(400);
+            
+            const body = await res.json();
+            expect(body.error).toContain('projectId');
+        });
 
-            await AgentGenerate({ request: req } as any);
+        it('should process valid requests', async () => {
+            const req = new Request('http://localhost/api/agent/engineer', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    projectId: 'test-project',
+                    instructions: 'create a button component'
+                })
+            });
 
-            // Verify fetch payload
-            const fetchCall = vi.mocked(global.fetch).mock.calls[0];
-            const body = JSON.parse(fetchCall[1]?.body as string);
-
-            // Check if system prompt contains context
-            const systemMsg = body.messages[0].content;
-            expect(systemMsg).toContain('PROJECT CONTEXT');
-            expect(systemMsg).toContain('src/App.js');
-            expect(systemMsg).toContain('react');
+            const res = await EngineerEndpoint({ request: req } as any);
+            expect(res.status).toBe(200);
+            
+            const body = await res.json();
+            expect(body.success).toBe(true);
         });
     });
 

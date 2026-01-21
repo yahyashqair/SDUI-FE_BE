@@ -1,10 +1,19 @@
 
 import { PlatformDB } from '../db/platform';
-import { FileSystem } from '../db/fs';
+import { FileSystem, validateProjectId } from '../db/fs';
 import { initTenantDB } from '../db/tenant';
 import { buildMFE } from '../platform/bundler';
 import fissionClient from '../dashboard/lib/fission-client';
 import mfeManager from '../dashboard/lib/mfe-manager';
+import { agentMemory } from './memory';
+import { analyzeGeneratedCode } from '../security/analyzer';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import path from 'path';
+import fs from 'fs';
+
+const execAsync = promisify(exec);
+const TENANTS_DIR = path.resolve(process.cwd(), 'data', 'tenants');
 
 /**
  * AI Tools Definition
@@ -13,8 +22,21 @@ import mfeManager from '../dashboard/lib/mfe-manager';
 
 export interface ToolResult {
     success: boolean;
-    data?: any;
+    data?: unknown;
     error?: string;
+}
+
+/**
+ * Log tool execution for memory/audit
+ */
+function logToolExecution(projectId: string, toolName: string, result: ToolResult): void {
+    agentMemory.save(projectId, {
+        projectId,
+        agentType: 'engineer',
+        action: `tool:${toolName}`,
+        result,
+        context: { toolName }
+    });
 }
 
 export const AITools = {
@@ -230,43 +252,202 @@ export const AITools = {
      * Run a shell command (SAFE MODE)
      */
     runCommand: async (projectId: string, command: string): Promise<ToolResult> => {
+        // Validate project ID
+        try {
+            validateProjectId(projectId);
+        } catch (e: unknown) {
+            const error = e instanceof Error ? e.message : 'Invalid project ID';
+            return { success: false, error };
+        }
+
         // ALLOW-LIST ONLY
-        const ALLOWED_COMMANDS = ['npm run build', 'npm test', 'npx tsc', 'git status', 'ls'];
+        const ALLOWED_COMMANDS = ['npm run build', 'npm test', 'npx tsc', 'git status', 'ls', 'npm install'];
         const isAllowed = ALLOWED_COMMANDS.some(cmd => command.startsWith(cmd));
 
         if (!isAllowed) {
             return { success: false, error: `Command not allowed: ${command}` };
         }
 
-        // Mock execution
-        return { success: true, data: { output: `Mock output for: ${command}` } };
+        try {
+            const projectDir = path.join(TENANTS_DIR, projectId);
+            if (!fs.existsSync(projectDir)) {
+                return { success: false, error: 'Project directory does not exist' };
+            }
+
+            const { stdout, stderr } = await execAsync(command, { 
+                cwd: projectDir,
+                timeout: 30000 // 30 second timeout
+            });
+            
+            const result: ToolResult = { 
+                success: true, 
+                data: { output: stdout, stderr: stderr || undefined } 
+            };
+            logToolExecution(projectId, 'runCommand', result);
+            return result;
+        } catch (e: unknown) {
+            const error = e instanceof Error ? e.message : 'Command execution failed';
+            return { success: false, error };
+        }
     },
 
     gitInit: async (projectId: string): Promise<ToolResult> => {
         try {
-            // Note: In a real implementation this would exec git init
-            // For now, we mock or use the existing safe runner if extended
-            return { success: true, data: { message: "Git initialized (mock)" } };
-        } catch (e: any) {
-            return { success: false, error: e.message };
+            validateProjectId(projectId);
+            const projectDir = path.join(TENANTS_DIR, projectId);
+            
+            // Ensure directory exists
+            if (!fs.existsSync(projectDir)) {
+                fs.mkdirSync(projectDir, { recursive: true });
+            }
+            
+            // Check if already initialized
+            if (fs.existsSync(path.join(projectDir, '.git'))) {
+                return { success: true, data: { message: 'Git repository already initialized' } };
+            }
+            
+            await execAsync('git init', { cwd: projectDir });
+            await execAsync('git config user.email "ai@platform.local"', { cwd: projectDir });
+            await execAsync('git config user.name "AI Platform"', { cwd: projectDir });
+            
+            const result: ToolResult = { success: true, data: { message: 'Git repository initialized' } };
+            logToolExecution(projectId, 'gitInit', result);
+            return result;
+        } catch (e: unknown) {
+            const error = e instanceof Error ? e.message : 'Git init failed';
+            return { success: false, error };
         }
     },
 
-    gitCheckout: async (projectId: string, branch: string, create: boolean): Promise<ToolResult> => {
+    gitCheckout: async (projectId: string, branch: string, create: boolean = false): Promise<ToolResult> => {
         try {
-            // Mock branching
-            return { success: true, data: { message: `Checked out ${branch}` } };
-        } catch (e: any) {
-            return { success: false, error: e.message };
+            validateProjectId(projectId);
+            
+            // Validate branch name
+            if (!/^[a-zA-Z0-9_/-]+$/.test(branch)) {
+                return { success: false, error: 'Invalid branch name' };
+            }
+            
+            const projectDir = path.join(TENANTS_DIR, projectId);
+            
+            if (!fs.existsSync(path.join(projectDir, '.git'))) {
+                return { success: false, error: 'Not a git repository. Run gitInit first.' };
+            }
+            
+            const flag = create ? '-b' : '';
+            await execAsync(`git checkout ${flag} ${branch}`.trim(), { cwd: projectDir });
+            
+            const result: ToolResult = { 
+                success: true, 
+                data: { message: `Checked out branch: ${branch}` } 
+            };
+            logToolExecution(projectId, 'gitCheckout', result);
+            return result;
+        } catch (e: unknown) {
+            const error = e instanceof Error ? e.message : 'Git checkout failed';
+            return { success: false, error };
         }
     },
 
     gitCommit: async (projectId: string, message: string): Promise<ToolResult> => {
         try {
-            // Mock commit
-            return { success: true, data: { message: `Committed: ${message}` } };
-        } catch (e: any) {
-            return { success: false, error: e.message };
+            validateProjectId(projectId);
+            
+            // Sanitize commit message
+            const safeMessage = message
+                .replace(/[`$\\!"']/g, '')
+                .substring(0, 200);
+            
+            if (!safeMessage.trim()) {
+                return { success: false, error: 'Commit message is required' };
+            }
+            
+            const projectDir = path.join(TENANTS_DIR, projectId);
+            
+            if (!fs.existsSync(path.join(projectDir, '.git'))) {
+                return { success: false, error: 'Not a git repository. Run gitInit first.' };
+            }
+            
+            // Stage all changes
+            await execAsync('git add -A', { cwd: projectDir });
+            
+            // Check if there are changes to commit
+            try {
+                await execAsync('git diff --staged --quiet', { cwd: projectDir });
+                return { success: true, data: { message: 'No changes to commit' } };
+            } catch {
+                // Changes exist, proceed with commit
+            }
+            
+            await execAsync(`git commit -m "${safeMessage}"`, { cwd: projectDir });
+            
+            const result: ToolResult = { 
+                success: true, 
+                data: { message: `Committed: ${safeMessage}` } 
+            };
+            logToolExecution(projectId, 'gitCommit', result);
+            return result;
+        } catch (e: unknown) {
+            const error = e instanceof Error ? e.message : 'Git commit failed';
+            return { success: false, error };
+        }
+    },
+
+    /**
+     * Get git status for a project
+     */
+    gitStatus: async (projectId: string): Promise<ToolResult> => {
+        try {
+            validateProjectId(projectId);
+            const projectDir = path.join(TENANTS_DIR, projectId);
+            
+            if (!fs.existsSync(path.join(projectDir, '.git'))) {
+                return { success: false, error: 'Not a git repository' };
+            }
+            
+            const { stdout } = await execAsync('git status --porcelain', { cwd: projectDir });
+            const { stdout: branch } = await execAsync('git branch --show-current', { cwd: projectDir });
+            
+            return { 
+                success: true, 
+                data: { 
+                    branch: branch.trim(),
+                    changes: stdout.split('\n').filter(l => l.trim()),
+                    clean: stdout.trim() === ''
+                } 
+            };
+        } catch (e: unknown) {
+            const error = e instanceof Error ? e.message : 'Git status failed';
+            return { success: false, error };
+        }
+    },
+
+    /**
+     * Get git log for a project
+     */
+    gitLog: async (projectId: string, limit: number = 10): Promise<ToolResult> => {
+        try {
+            validateProjectId(projectId);
+            const projectDir = path.join(TENANTS_DIR, projectId);
+            
+            if (!fs.existsSync(path.join(projectDir, '.git'))) {
+                return { success: false, error: 'Not a git repository' };
+            }
+            
+            const { stdout } = await execAsync(
+                `git log --oneline -n ${Math.min(limit, 50)}`, 
+                { cwd: projectDir }
+            );
+            
+            const commits = stdout.split('\n').filter(l => l.trim()).map(line => {
+                const [hash, ...messageParts] = line.split(' ');
+                return { hash, message: messageParts.join(' ') };
+            });
+            
+            return { success: true, data: { commits } };
+        } catch (e: unknown) {
+            const error = e instanceof Error ? e.message : 'Git log failed';
+            return { success: false, error };
         }
     }
 };

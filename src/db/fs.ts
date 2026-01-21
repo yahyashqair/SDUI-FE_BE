@@ -12,20 +12,97 @@ if (!fs.existsSync(TENANTS_DIR)) {
   fs.mkdirSync(TENANTS_DIR, { recursive: true });
 }
 
+/**
+ * Validate project ID format - prevent directory traversal via project ID
+ */
+function validateProjectId(projectId: string): string {
+  if (!projectId || typeof projectId !== 'string') {
+    throw new Error('Invalid project ID: must be a non-empty string');
+  }
+  if (!/^[a-zA-Z0-9-_]{1,64}$/.test(projectId)) {
+    throw new Error('Invalid project ID: only alphanumeric characters, hyphens, and underscores are allowed (max 64 chars)');
+  }
+  return projectId;
+}
+
+/**
+ * List of sensitive file patterns that should not be accessible
+ */
+const SENSITIVE_PATTERNS = [
+  /^\./, // Hidden files (starting with .)
+  /\.env$/i, // Environment files
+  /\.pem$/i, // Private keys
+  /\.key$/i, // Key files
+  /^id_rsa/, // SSH keys
+  /\.sqlite$/i, // Database files
+  /\.db$/i, // Database files
+];
+
+/**
+ * Check if a file path matches sensitive patterns
+ */
+function isSensitivePath(filePath: string): boolean {
+  const basename = path.basename(filePath);
+  return SENSITIVE_PATTERNS.some(pattern => pattern.test(basename));
+}
+
 export const FileSystem = {
-  getProjectDir: (projectId: string) => path.join(TENANTS_DIR, projectId, 'src'),
+  getProjectDir: (projectId: string) => {
+    const safeId = validateProjectId(projectId);
+    return path.join(TENANTS_DIR, safeId, 'src');
+  },
 
   validatePath(projectId: string, targetPath: string): string {
-    const projectRoot = path.join(TENANTS_DIR, projectId);
-    const resolvedPath = path.resolve(projectRoot, 'src', targetPath);
-    if (!resolvedPath.startsWith(projectRoot)) {
-      throw new Error('Access denied: Path traversal attempt');
+    // Validate project ID first
+    const safeProjectId = validateProjectId(projectId);
+    
+    // Validate target path
+    if (!targetPath || typeof targetPath !== 'string') {
+      throw new Error('Invalid target path: must be a non-empty string');
     }
+    
+    // Normalize and check for null bytes
+    if (targetPath.includes('\0')) {
+      throw new Error('Invalid target path: null bytes not allowed');
+    }
+    
+    const projectRoot = path.join(TENANTS_DIR, safeProjectId);
+    const srcRoot = path.join(projectRoot, 'src');
+    const resolvedPath = path.resolve(srcRoot, targetPath);
+    
+    // Check path stays within project boundary
+    if (!resolvedPath.startsWith(projectRoot)) {
+      throw new Error('Access denied: Path traversal attempt detected');
+    }
+    
+    // Try to resolve symlinks if path exists
+    try {
+      if (fs.existsSync(resolvedPath)) {
+        const realPath = fs.realpathSync(resolvedPath);
+        const realRoot = fs.realpathSync(projectRoot);
+        
+        if (!realPath.startsWith(realRoot)) {
+          throw new Error('Access denied: Symlink traversal attempt detected');
+        }
+      }
+    } catch (e: any) {
+      // If realpath fails for reasons other than non-existence, deny access
+      if (e.code !== 'ENOENT') {
+        throw new Error('Access denied: Path validation failed');
+      }
+    }
+    
+    // Check for sensitive file patterns
+    if (isSensitivePath(targetPath)) {
+      throw new Error('Access denied: Cannot access sensitive files');
+    }
+    
     return resolvedPath;
   },
 
   initProject: async (projectId: string) => {
-    const projectDir = path.join(TENANTS_DIR, projectId);
+    const safeProjectId = validateProjectId(projectId);
+    const projectDir = path.join(TENANTS_DIR, safeProjectId);
     const srcDir = path.join(projectDir, 'src');
 
     if (!fs.existsSync(srcDir)) {
@@ -76,7 +153,14 @@ module.exports = {
   },
 
   listFiles: (projectId: string, dir: string = ''): Array<{ name: string, type: 'directory' | 'file', path: string }> => {
-    const projectSrc = path.join(TENANTS_DIR, projectId, 'src');
+    const safeProjectId = validateProjectId(projectId);
+    const projectSrc = path.join(TENANTS_DIR, safeProjectId, 'src');
+    
+    // Validate directory path
+    if (dir && typeof dir === 'string' && dir.includes('..')) {
+      throw new Error('Access denied: Path traversal attempt');
+    }
+    
     const targetDir = path.join(projectSrc, dir);
 
     if (!path.resolve(targetDir).startsWith(projectSrc)) {
@@ -90,6 +174,9 @@ module.exports = {
     function walk(currentDir: string, relativePath: string) {
       const files = fs.readdirSync(currentDir, { withFileTypes: true });
       for (const f of files) {
+        // Skip hidden files and sensitive patterns
+        if (f.name.startsWith('.')) continue;
+        
         const relPath = path.join(relativePath, f.name);
         results.push({
           name: f.name,
@@ -121,13 +208,21 @@ module.exports = {
   },
 
   commit: async (projectId: string, message: string) => {
-    const projectDir = path.join(TENANTS_DIR, projectId);
+    const safeProjectId = validateProjectId(projectId);
+    const projectDir = path.join(TENANTS_DIR, safeProjectId);
+    
+    // Sanitize commit message - remove any shell metacharacters
+    const safeMessage = message.replace(/[`$\\!"']/g, '').substring(0, 200);
+    
     try {
       await execAsync(`git add .`, { cwd: projectDir });
-      await execAsync(`git commit -m "${message}"`, { cwd: projectDir });
+      await execAsync(`git commit -m "${safeMessage}"`, { cwd: projectDir });
       return true;
     } catch (e) {
       return false;
     }
   }
 };
+
+// Export validateProjectId for use in other modules
+export { validateProjectId };
