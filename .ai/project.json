@@ -1,0 +1,70 @@
+{
+  "version": "1.0.0",
+  "projectName": "second-series",
+  "createdAt": "2025-01-21T00:00:00.000Z",
+
+  "coordination": {
+    "mode": "hierarchical",
+    "maxAgents": 10,
+    "timeout": 300000
+  },
+
+  "agents": {
+    "architect": {
+      "model": "claude-opus-4-5",
+      "role": "system-architect",
+      "instructions": [
+        "Maintain consistency across microservices and MFEs",
+        "Ensure proper separation of concerns",
+        "Follow SOLID principles",
+        "Design for scalability"
+      ]
+    },
+    "coder": {
+      "model": "claude-opus-4-5",
+      "role": "coder",
+      "instructions": [
+        "Write clean, maintainable code",
+        "Follow TypeScript best practices",
+        "Add comprehensive tests",
+        "Document complex logic"
+      ]
+    },
+    "reviewer": {
+      "model": "claude-opus-4-5",
+      "role": "code-reviewer",
+      "rules": [
+        "Ensure code follows project standards",
+        "Check for security vulnerabilities",
+        "Validate performance considerations",
+        "Verify test coverage"
+      ]
+    },
+    "tester": {
+      "model": "claude-opus-4-5",
+      "role": "tester",
+      "coverage": 80,
+      "frameworks": ["vitest", "playwright"]
+    }
+  },
+
+  "hooks": {
+    "onServiceCreate": ".ai/hooks/on-service-create.js",
+    "onMFECreate": ".ai/hooks/on-mfe-create.js",
+    "preCommit": ".ai/hooks/pre-commit.js",
+    "postGen": ".ai/hooks/post-gen.js"
+  },
+
+  "templates": {
+    "backend": "templates/backend",
+    "frontend": "templates/frontend"
+  },
+
+  "capabilities": {
+    "codeGeneration": true,
+    "codeReview": true,
+    "testing": true,
+    "documentation": true,
+    "refactoring": true
+  }
+}

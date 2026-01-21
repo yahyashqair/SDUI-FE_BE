@@ -1,7 +1,7 @@
 {
   "name": "second-series",
-  "type": "module",
   "version": "0.0.1",
+  "type": "module",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -9,7 +9,16 @@
     "astro": "astro",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "generator": "node .generator/cli/index.js",
+    "create": "node .generator/cli/index.js create",
+    "add": "node .generator/cli/index.js add",
+    "agent:init": "node .generator/cli/index.js agent init",
+    "agent:enhance": "node .generator/cli/index.js agent enhance",
+    "agent:fix": "node .generator/cli/index.js agent fix"
+  },
+  "bin": {
+    "gen": "./.generator/cli/index.js"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.13",
@@ -24,9 +33,11 @@
     "@types/uuid": "^10.0.0",
     "astro": "^5.16.11",
     "better-sqlite3": "^12.6.2",
+    "commander": "^12.1.0",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.1",
     "esbuild": "^0.27.2",
+    "glob": "^11.1.0",
     "hono": "^4.11.4",
     "marked": "^17.0.1",
     "react": "^19.2.3",

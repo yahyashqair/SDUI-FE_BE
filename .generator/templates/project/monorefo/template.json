@@ -1,0 +1,29 @@
+{
+  "name": "monorepo-fullstack",
+  "type": "project",
+  "description": "Full-stack monorepo with microservices and MFEs",
+  "version": "1.0.0",
+  "variables": [
+    {
+      "name": "NAME",
+      "description": "Project name",
+      "required": true
+    }
+  ],
+  "structure": {
+    "apps": "Frontend MFEs",
+    "services": "Backend microservices",
+    "packages": "Shared packages"
+  },
+  "dependencies": {
+    "turbo": "^2.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "create": "node .generator/cli/index.js create",
+    "add": "node .generator/cli/index.js add"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "name": "astro-mfe",
+  "type": "frontend",
+  "description": "Astro micro-frontend with React islands",
+  "version": "1.0.0",
+  "variables": [
+    {
+      "name": "NAME",
+      "description": "MFE name",
+      "required": true
+    },
+    {
+      "name": "PORT",
+      "description": "Port number",
+      "default": 3000
+    }
+  ],
+  "files": [
+    "pages/index.astro",
+    "layouts/BaseLayout.astro",
+    "components/react/Button.tsx",
+    "components/react/Form.tsx",
+    "components/astro/Header.astro",
+    "components/astro/Footer.astro",
+    "hooks/useAuth.ts",
+    "hooks/useFetch.ts",
+    "services/api.ts",
+    "types/index.ts",
+    "package.json",
+    "astro.config.mjs",
+    "tsconfig.json",
+    "README.md"
+  ],
+  "dependencies": {
+    "astro": "^4.0.0",
+    "@astrojs/react": "^3.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0",
+    "@testing-library/react": "^14.0.0",
+    "playwright": "^1.40.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "test": "vitest",
+    "test:e2e": "playwright test"
+  }
+}

@@ -1,0 +1,24 @@
+---
+/**
+ * {{NAME}} Micro-Frontend
+ *
+ * @description Micro-frontend for {{NAME}} functionality
+ */
+
+import BaseLayout from '@/layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="{{NAME}}">
+  <main class="container">
+    <h1>{{NAME_PASCAL}}</h1>
+    <p>Welcome to the {{NAME}} micro-frontend.</p>
+
+    <!-- Your content here -->
+  </main>
+</BaseLayout>
+
+<style>
+  .container {
+    @apply mx-auto px-4 py-8 max-w-7xl;
+  }
+</style>

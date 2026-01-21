@@ -1,0 +1,53 @@
+{
+  "name": "express-api",
+  "type": "backend",
+  "description": "Express.js REST API microservice with TypeScript",
+  "version": "1.0.0",
+  "variables": [
+    {
+      "name": "NAME",
+      "description": "Service name",
+      "required": true
+    },
+    {
+      "name": "PORT",
+      "description": "Port number",
+      "default": 3000
+    }
+  ],
+  "files": [
+    "index.js",
+    "routes/index.js",
+    "middleware/auth.js",
+    "middleware/error.js",
+    "middleware/validation.js",
+    "services/base.js",
+    "types/index.ts",
+    "package.json",
+    "tsconfig.json",
+    "README.md"
+  ],
+  "dependencies": {
+    "express": "^4.18.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "zod": "^3.22.0",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.0",
+    "@types/cors": "^2.8.0",
+    "typescript": "^5.0.0",
+    "jest": "^29.0.0",
+    "supertest": "^6.3.0"
+  },
+  "scripts": {
+    "dev": "tsx watch index.js",
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"**/*.{ts,js,json}\""
+  }
+}
