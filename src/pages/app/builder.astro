@@ -11,11 +11,11 @@ import Layout from "../../layouts/Layout.astro";
 <Layout title="AI System Builder">
     <main id="app"></main>
 
-    <!-- Load React and Markdown library -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Load React -->
     <script>
         import React, { useState, useEffect, useRef } from "react";
         import { createRoot } from "react-dom/client";
+        import { marked } from "marked";
 
         // Expose React
         (window as any).React = React;
@@ -65,13 +65,18 @@ import Layout from "../../layouts/Layout.astro";
                 ]);
                 setIsLoading(true);
 
+                // Add placeholder for assistant response
+                setHistory((prev) => [
+                    ...prev,
+                    { role: "assistant", content: "", type: "text" },
+                ]);
+
                 try {
                     const endpoint =
                         role === "architect"
                             ? "/api/agent/architect"
                             : "/api/agent/engineer";
 
-                    // Filter history to send only relevant messages
                     const conversationHistory = history
                         .map((h) => ({
                             role: h.role === "assistant" ? "assistant" : "user",
@@ -81,7 +86,6 @@ import Layout from "../../layouts/Layout.astro";
                             (h) => h.role === "user" || h.role === "assistant",
                         );
 
-                    // Add the new user message
                     const messages = [
                         ...conversationHistory,
                         { role: "user", content: userMsg },
@@ -95,45 +99,104 @@ import Layout from "../../layouts/Layout.astro";
                         body: JSON.stringify(body),
                     });
 
-                    const data = await res.json();
+                    if (!res.ok) throw new Error(res.statusText);
+                    if (!res.body) throw new Error("No response body");
 
-                    if (data.error) {
-                        setHistory((prev) => [
-                            ...prev,
-                            {
-                                role: "system",
-                                content: `Error: ${data.error}`,
-                                type: "text",
-                            },
-                        ]);
-                    } else if (role === "architect") {
-                        // Architect returns content
-                        setHistory((prev) => [
-                            ...prev,
-                            {
-                                role: "assistant",
-                                content: data.content || "Design complete.",
-                                type: "text",
-                            },
-                        ]);
-                    } else {
-                        // Engineer returns logs
-                        const logs = (data.logs || []).join("\n");
-                        setHistory((prev) => [
-                            ...prev,
-                            { role: "assistant", content: logs, type: "logs" },
-                        ]);
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = "";
 
-                        // If Engineer produced a final message content, show it too
-                        if (data.content) {
-                            setHistory((prev) => [
-                                ...prev,
-                                {
-                                    role: "assistant",
-                                    content: data.content,
-                                    type: "text",
-                                },
-                            ]);
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split("\n\n");
+                        buffer = lines.pop() || "";
+
+                        for (const line of lines) {
+                            if (!line.startsWith("data: ")) continue;
+                            const data = line.slice(6);
+                            if (!data) continue;
+
+                            try {
+                                const event = JSON.parse(data);
+
+                                if (event.type === "token") {
+                                    setHistory((prev) => {
+                                        const newHistory = [...prev];
+                                        const lastMsg =
+                                            newHistory[newHistory.length - 1];
+                                        if (
+                                            lastMsg.role === "assistant" &&
+                                            lastMsg.type === "text"
+                                        ) {
+                                            lastMsg.content += event.content;
+                                        }
+                                        return newHistory;
+                                    });
+                                } else if (
+                                    event.type === "log" ||
+                                    event.type === "tool_start" ||
+                                    event.type === "tool_end"
+                                ) {
+                                    // Append logs
+                                    setHistory((prev) => {
+                                        const newHistory = [...prev];
+                                        const lastMsg =
+                                            newHistory[newHistory.length - 1];
+
+                                        // If last message is logs, append to it, otherwise create new logs message
+                                        if (lastMsg.type === "logs") {
+                                            let logText = "";
+                                            if (event.type === "log")
+                                                logText = event.content;
+                                            if (event.type === "tool_start")
+                                                logText = `> Executing ${event.tool}...`;
+                                            if (event.type === "tool_end")
+                                                logText = `> Tool ${event.tool} finished.`;
+
+                                            lastMsg.content +=
+                                                (lastMsg.content ? "\n" : "") +
+                                                logText;
+                                            return newHistory;
+                                        } else {
+                                            let logText = "";
+                                            if (event.type === "log")
+                                                logText = event.content;
+                                            if (event.type === "tool_start")
+                                                logText = `> Executing ${event.tool}...`;
+                                            if (event.type === "tool_end")
+                                                logText = `> Tool ${event.tool} finished.`;
+
+                                            return [
+                                                ...newHistory,
+                                                {
+                                                    role: "assistant",
+                                                    content: logText,
+                                                    type: "logs",
+                                                },
+                                                {
+                                                    role: "assistant",
+                                                    content: "",
+                                                    type: "text",
+                                                }, // Prepare for next text token
+                                            ];
+                                        }
+                                    });
+                                } else if (event.type === "error") {
+                                    setHistory((prev) => [
+                                        ...prev,
+                                        {
+                                            role: "system",
+                                            content: `Error: ${event.error}`,
+                                            type: "text",
+                                        },
+                                    ]);
+                                }
+                            } catch (e) {
+                                console.error("Error parsing SSE event", e);
+                            }
                         }
                     }
                 } catch (e: any) {
@@ -157,10 +220,7 @@ import Layout from "../../layouts/Layout.astro";
                 const isUser = msg.role === "user";
                 const isLogs = msg.type === "logs";
 
-                // Use marked for markdown
-                const htmlContent = isLogs
-                    ? ""
-                    : (window as any).marked.parse(msg.content);
+                const htmlContent = isLogs ? "" : marked.parse(msg.content);
 
                 return h(
                     "div",

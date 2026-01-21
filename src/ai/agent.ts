@@ -6,14 +6,23 @@ import { ARCHITECT_PROMPT, ENGINEER_PROMPT } from './system';
 // Mock OpenAI Response Structure
 interface AIResponse {
     tool_calls?: {
+        id?: string;
+        type: 'function';
         function: {
             name: string;
             arguments: string; // JSON string
         },
-        id?: string;
     }[];
     content?: string;
 }
+
+export type StreamEvent =
+    | { type: 'token'; content: string }
+    | { type: 'tool_start'; tool: string; args: any }
+    | { type: 'log'; content: string }
+    | { type: 'tool_end'; tool: string; result: any }
+    | { type: 'error'; error: string }
+    | { type: 'done' };
 
 // ------------------------------------------------------------------
 // Tool Definitions
@@ -210,13 +219,14 @@ const ENGINEER_TOOLS = [
 // AI Client
 // ------------------------------------------------------------------
 
-async function callAI(history: any[], tools: any[], systemPrompt: string): Promise<AIResponse> {
+async function* streamAI(history: any[], tools: any[], systemPrompt: string): AsyncGenerator<AIResponse | { partial: string }> {
     const API_KEY = import.meta.env.AI_API_KEY || process.env.AI_API_KEY;
     const API_URL = import.meta.env.AI_API_URL || process.env.AI_API_URL || 'https://api.z.ai/api/coding/paas/v4/chat/completions';
 
     if (!API_KEY) {
         console.warn("No AI_API_KEY found, using mock.");
-        return mockPlanner(history); // Use mock if no key
+        yield mockPlanner(history); // Use mock if no key
+        return;
     }
 
     try {
@@ -241,7 +251,8 @@ async function callAI(history: any[], tools: any[], systemPrompt: string): Promi
                     })
                 ],
                 tools: tools.length > 0 ? tools : undefined,
-                tool_choice: tools.length > 0 ? 'auto' : undefined
+                tool_choice: tools.length > 0 ? 'auto' : undefined,
+                stream: true
             })
         });
 
@@ -250,16 +261,70 @@ async function callAI(history: any[], tools: any[], systemPrompt: string): Promi
             throw new Error(`AI API Error: ${response.status} ${err}`);
         }
 
-        const data = await response.json();
-        const choice = data.choices[0];
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
 
-        return {
-            content: choice.message.content,
-            tool_calls: choice.message.tool_calls
-        };
+        // State for accumulating tool calls
+        let currentToolCalls: any[] = [];
+        let currentContent = '';
+
+        if (!reader) throw new Error("No response body");
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+                if (line.trim() === 'data: [DONE]') continue;
+                if (!line.startsWith('data: ')) continue;
+
+                try {
+                    const json = JSON.parse(line.slice(6));
+                    const delta = json.choices[0].delta;
+
+                    if (delta.content) {
+                        currentContent += delta.content;
+                        yield { partial: delta.content };
+                    }
+
+                    if (delta.tool_calls) {
+                        for (const toolCall of delta.tool_calls) {
+                            const index = toolCall.index;
+                            if (!currentToolCalls[index]) {
+                                currentToolCalls[index] = {
+                                    id: toolCall.id,
+                                    type: 'function',
+                                    function: { name: '', arguments: '' }
+                                };
+                            }
+                            if (toolCall.function?.name) {
+                                currentToolCalls[index].function.name += toolCall.function.name;
+                            }
+                            if (toolCall.function?.arguments) {
+                                currentToolCalls[index].function.arguments += toolCall.function.arguments;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error parsing SSE:", e);
+                }
+            }
+        }
+
+        // Return finalized result
+        yield {
+            content: currentContent,
+            tool_calls: currentToolCalls.length > 0 ? currentToolCalls : undefined
+        } as AIResponse;
+
     } catch (e: any) {
         console.error("AI Call Failed", e);
-        return { content: `Error: ${e.message}` };
+        throw e;
     }
 }
 
@@ -268,32 +333,42 @@ async function callAI(history: any[], tools: any[], systemPrompt: string): Promi
 // ------------------------------------------------------------------
 
 export const ArchitectAgent = {
-    process: async (projectId: string, input: string | any[]) => {
+    process: async function* (projectId: string, input: string | any[]): AsyncGenerator<StreamEvent> {
         const systemPrompt = ARCHITECT_PROMPT;
-
-        // Handle both single prompt string and full history array
         const history = Array.isArray(input) ? input : [{ role: 'user', content: input }];
 
-        return await callAI(history, ARCHITECT_TOOLS, systemPrompt);
+        try {
+            const generator = streamAI(history, ARCHITECT_TOOLS, systemPrompt);
+            for await (const chunk of generator) {
+                if ('partial' in chunk) {
+                    yield { type: 'token', content: chunk.partial };
+                }
+                // We ignore the final AIResponse yield in the generator loop for Architect
+                // unless we want to do something with it, but Architect is mostly text.
+            }
+            yield { type: 'done' };
+        } catch (e: any) {
+            yield { type: 'error', error: e.message };
+        }
     }
 };
 
 export const EngineerAgent = {
-    process: async (projectId: string, input: string | any[]) => {
+    process: async function* (projectId: string, input: string | any[]): AsyncGenerator<StreamEvent> {
         // SANDBOX: Ensure we are in a unique branch to avoid breaking main
         const timestamp = new Date().getTime();
         const branchName = `ai-run-${timestamp}`;
+
+        yield { type: 'log', content: `🛡️ Sandbox Mode: Created branch ${branchName}` };
+
+        // We'll skip the actual git operations in the stream loop start for speed/simplicity of this refactor
+        // or effectively we do them but don't blocking-wait on them for "first token" if we can help it.
+        // But we must do them.
         await AITools.gitInit(projectId);
         await AITools.gitCheckout(projectId, branchName, true);
-
         await FileSystem.initProject(projectId);
 
-        const systemPrompt = ENGINEER_PROMPT; // Use strict prompt
-
-        const logs: string[] = [];
-        logs.push(`🛡️ Sandbox Mode: Created branch ${branchName}`);
-
-        // Initialize history from input (array or single string)
+        const systemPrompt = ENGINEER_PROMPT;
         let history: any[] = Array.isArray(input) ? input : [{ role: 'user', content: input }];
 
         let attempts = 0;
@@ -301,17 +376,27 @@ export const EngineerAgent = {
 
         while (attempts < MAX_ATTEMPTS) {
             attempts++;
-            console.log(`[Engineer] Step ${attempts}`);
+            yield { type: 'log', content: `[Engineer] Step ${attempts}` };
 
-            const plan = await callAI(history, ENGINEER_TOOLS, systemPrompt);
+            const generator = streamAI(history, ENGINEER_TOOLS, systemPrompt);
+            let fullResponse: AIResponse = {};
+
+            for await (const chunk of generator) {
+                if ('partial' in chunk) {
+                    yield { type: 'token', content: chunk.partial };
+                } else {
+                    fullResponse = chunk;
+                }
+            }
+
+            const plan = fullResponse;
 
             if (plan.content) {
-                logs.push(`🤖 Engineer: ${plan.content}`);
                 history.push({ role: 'assistant', content: plan.content });
             }
 
             if (!plan.tool_calls || plan.tool_calls.length === 0) {
-                logs.push(`ℹ️ Engineer finished.`);
+                yield { type: 'log', content: `ℹ️ Engineer finished.` };
                 break;
             }
 
@@ -323,9 +408,16 @@ export const EngineerAgent = {
 
             for (const call of plan.tool_calls) {
                 const fnName = call.function.name;
-                const args = JSON.parse(call.function.arguments);
+                const argsStr = call.function.arguments;
+                let args;
+                try {
+                    args = JSON.parse(argsStr);
+                } catch (e) {
+                    yield { type: 'log', content: `Error parsing args for ${fnName}: ${argsStr}` };
+                    continue;
+                }
 
-                logs.push(`Executing: ${fnName}...`);
+                yield { type: 'tool_start', tool: fnName, args };
 
                 let result;
                 try {
@@ -384,16 +476,18 @@ export const EngineerAgent = {
                 });
 
                 if (!result.success) {
-                    logs.push(`❌ Tool failed: ${result.error}`);
+                    yield { type: 'log', content: `❌ Tool failed: ${result.error}` };
                 } else {
-                    logs.push(`✅ Tool success`);
+                    yield { type: 'log', content: `✅ Tool success` };
                 }
+
+                yield { type: 'tool_end', tool: fnName, result };
             }
 
             await FileSystem.commit(projectId, `Engineer: Step ${attempts}`);
         }
 
-        return { success: true, logs };
+        yield { type: 'done' };
     }
 };
 
@@ -411,6 +505,8 @@ function mockPlanner(history: any[]): AIResponse {
             content: "Mock plan for Todo App",
             tool_calls: [
                 {
+                    id: 'call_mock_1',
+                    type: 'function',
                     function: {
                         name: 'createBackendFunction',
                         arguments: JSON.stringify({ name: 'test', code: 'module.exports = () => ({ok:true})' })
