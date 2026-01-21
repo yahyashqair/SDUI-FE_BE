@@ -41,22 +41,6 @@ const READ_CONTEXT_TOOL = {
     }
 };
 
-const DEFINE_ROUTE_TOOL = {
-    type: 'function',
-    function: {
-        name: 'defineRoute',
-        description: 'Maps a URL path to a Micro-Frontend (MFE).',
-        parameters: {
-            type: 'object',
-            properties: {
-                path: { type: 'string', description: 'The URL path (e.g., /checkout)' },
-                mfeName: { type: 'string', description: 'The name of the MFE to render (e.g., CheckoutMFE)' }
-            },
-            required: ['path', 'mfeName']
-        }
-    }
-};
-
 const DB_TOOL = {
     type: 'function',
     function: {
@@ -100,14 +84,14 @@ const BACKEND_TOOL = {
     type: 'function',
     function: {
         name: 'createBackendFunction',
-        description: 'Creates a Node.js serverless function.',
+        description: 'Creates a file in the backend service following DDD architecture.',
         parameters: {
             type: 'object',
             properties: {
-                name: { type: 'string', description: 'Function name' },
-                code: { type: 'string', description: 'Node.js code exporting a handler' }
+                path: { type: 'string', description: 'Relative path in backend src (e.g., domain/user.ts)' },
+                code: { type: 'string', description: 'TypeScript code' }
             },
-            required: ['name', 'code']
+            required: ['path', 'code']
         }
     }
 };
@@ -116,14 +100,29 @@ const FRONTEND_TOOL = {
     type: 'function',
     function: {
         name: 'createFrontendComponent',
-        description: 'Creates a React Micro-Frontend (MFE).',
+        description: 'Creates a file in the frontend remote module.',
         parameters: {
             type: 'object',
             properties: {
-                name: { type: 'string', description: 'Component name' },
+                path: { type: 'string', description: 'Relative path in frontend src (e.g., components/Button.tsx)' },
                 code: { type: 'string', description: 'React component code (TSX)' }
             },
-            required: ['name', 'code']
+            required: ['path', 'code']
+        }
+    }
+};
+
+const VERIFY_TOOL = {
+    type: 'function',
+    function: {
+        name: 'runVerificationGate',
+        description: 'Runs the Verification Gate to check architecture, tests, and build.',
+        parameters: {
+            type: 'object',
+            properties: {
+                type: { type: 'string', enum: ['backend', 'frontend'] }
+            },
+            required: ['type']
         }
     }
 };
@@ -208,10 +207,10 @@ const GENERIC_TOOLS = [
 const ARCHITECT_TOOLS = [READ_CONTEXT_TOOL, WRITE_DESIGN_TOOL, ...GENERIC_TOOLS];
 const ENGINEER_TOOLS = [
     READ_CONTEXT_TOOL,
-    DEFINE_ROUTE_TOOL,
     DB_TOOL,
     BACKEND_TOOL,
     FRONTEND_TOOL,
+    VERIFY_TOOL,
     ...GENERIC_TOOLS
 ];
 
@@ -343,8 +342,6 @@ export const ArchitectAgent = {
                 if ('partial' in chunk) {
                     yield { type: 'token', content: chunk.partial };
                 }
-                // We ignore the final AIResponse yield in the generator loop for Architect
-                // unless we want to do something with it, but Architect is mostly text.
             }
             yield { type: 'done' };
         } catch (e: any) {
@@ -361,9 +358,6 @@ export const EngineerAgent = {
 
         yield { type: 'log', content: `🛡️ Sandbox Mode: Created branch ${branchName}` };
 
-        // We'll skip the actual git operations in the stream loop start for speed/simplicity of this refactor
-        // or effectively we do them but don't blocking-wait on them for "first token" if we can help it.
-        // But we must do them.
         await AITools.gitInit(projectId);
         await AITools.gitCheckout(projectId, branchName, true);
         await FileSystem.initProject(projectId);
@@ -425,17 +419,17 @@ export const EngineerAgent = {
                         case 'readProjectContext':
                             result = await AITools.readProjectContext(projectId);
                             break;
-                        case 'defineRoute':
-                            result = await AITools.defineRoute(projectId, args.path, args.mfeName);
-                            break;
                         case 'updateDatabaseSchema':
                             result = await AITools.updateDatabaseSchema(projectId, args.schema);
                             break;
                         case 'createBackendFunction':
-                            result = await AITools.createBackendFunction(projectId, args.name, args.code);
+                            result = await AITools.createBackendFunction(projectId, args.path, args.code);
                             break;
                         case 'createFrontendComponent':
-                            result = await AITools.createFrontendComponent(projectId, args.name, args.code);
+                            result = await AITools.createFrontendComponent(projectId, args.path, args.code);
+                            break;
+                        case 'runVerificationGate':
+                            result = await AITools.runVerificationGate(projectId, args.type);
                             break;
                         case 'writeDesignDocument':
                             result = await AITools.writeDesignDocument(projectId, args.path, args.content);
@@ -495,8 +489,6 @@ export const EngineerAgent = {
 // Mock Planner (Simplified for brevity)
 // ------------------------------------------------------------------
 function mockPlanner(history: any[]): AIResponse {
-    // Basic mock implementation for testing without API key
-    // Returns a simple plan for "todo" app if detected
     const lastUserMsg = history.filter(h => h.role === 'user').pop();
     const prompt = (lastUserMsg?.content || '').toLowerCase();
 
@@ -509,7 +501,7 @@ function mockPlanner(history: any[]): AIResponse {
                     type: 'function',
                     function: {
                         name: 'createBackendFunction',
-                        arguments: JSON.stringify({ name: 'test', code: 'module.exports = () => ({ok:true})' })
+                        arguments: JSON.stringify({ path: 'src/domain/todo.ts', code: 'export class Todo {}' })
                     }
                 }
             ]
